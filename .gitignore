@@ -9,6 +9,8 @@ __pycache__/
 dictionaries/*
 !dictionaries/可下载词典.md
 !dictionaries/resources.json
+!dictionaries/指拼/
+!dictionaries/指拼/**
 ~$*
 
 

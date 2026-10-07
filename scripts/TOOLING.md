@@ -4,6 +4,10 @@
 
 供智能体在调用工具、配置依赖和处理文档技术问题时查阅。备课流程与翻译要求见根目录`AGENTS.md`。
 
+新歌先按AGENTS.md完整阅读参照讲义与小班原件，再检索数据库。`read_document.py`读取完整文本、Word格式和批注；它不能显示图示与完整版面，必须同时查看原件页面。查词使用`mdict_reader.py query`，整词失败后按AGENTS.md拆分对象、动作和关系，继续别名与近义词检索。查询现在自动展开别名指向，循环和断链会明确报告；原始记录与图片地址可用于本曲查询依据，不替代语义判断。
+
+内置指拼沿用同一工具：`python scripts/mdict_reader.py query dictionaries/指拼 "X H" --summary`；`python scripts/mdict_reader.py images dictionaries/指拼 dictionaries/指拼 "M C T Z" "工作台/歌题/指拼原图"`。本地资源无MDD，第二个路径仍填指拼目录，便于沿用现有命令结构。`ZH`、`CH`、`SH`、`NG`是单个原图条目，首字母序列必须用空格分开；字母顺序及重复保留。将输出图片路径插入已确认的Markdown，交给`make_handout.py`按正常图片流程制作。程序不根据汉字擅自决定名字读音。
+
 `scripts/requirements.txt`记录工具所需的Python库：python-docx用于Word，pdfplumber用于PDF。由智能体先查找客户端自带或系统已有的兼容Python，环境已有这些库时无需重复安装。缺少依赖时由智能体在项目根目录自动执行`python -m pip install -r scripts/requirements.txt`；缺少Python时优先自动配置运行时。脚本失败后先由模型诊断并调整方案，确实无法完成才请老师执行最少的手动步骤。查MDX和检索Markdown的脚本不依赖这两个库。依赖清单不属于教学资料，无需手语老师手动维护。
 
 转写检索示例：`python scripts/search_cases.py 名字 --source 教材 --limit 3`。来源筛选匹配文件名或“教材／手语歌讲义／小班／修改”。`python scripts/search_cases.py --rule R04`查规则说明及已关联案例；加`--context`展开教材完整会话。读取按工作表和列名定位，不依赖列顺序；返回编号、原件位置和链接。修改案例默认只显示引导，命中后加`--detail`读取正文。

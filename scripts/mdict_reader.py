@@ -287,9 +287,69 @@ def _make_parser() -> argparse.ArgumentParser:
     return parser
 
 
+class LocalDictionaryReader:
+    """Small bundled dictionaries expose the same query interface as MDX."""
+    def __init__(self, path):
+        import json
+        self.path = Path(path)
+        data = json.loads((self.path / "index.json").read_text(encoding="utf-8"))
+        self.encoding = "utf-8"
+        self.header = {"Title": data["title"]}
+        self._record_blocks = []
+        self.entries = [Entry(item["key"], i, i + 1) for i, item in enumerate(data["entries"])]
+        self.items = data["entries"]
+
+    def find(self, term, exact=True, limit=20):
+        term = term.casefold()
+        tokens = re.split(r"[\s/,]+", term.strip())
+        if exact and len(tokens) > 1:
+            return [e for token in tokens for e in self.find(token, exact=True, limit=limit)][:limit]
+        matches = [e for e in self.entries if e.key.casefold() == term] if exact else [e for e in self.entries if term in e.key.casefold()]
+        if exact and not matches and term and all(c.isascii() and c.isalpha() for c in term):
+            # Initial-letter strings are deliberately spelled letter by letter.
+            matches = [next(e for e in self.entries if e.key.casefold() == c) for c in term]
+        return matches[:limit]
+
+    def read_entry(self, entry):
+        item = self.items[entry.start]
+        return (f'<span class="word">{html.escape(item["key"])}指拼</span>'
+                f'<p class="content">{html.escape(item["description"])}</p>'
+                f'<img src="{html.escape(item["image"])}">').encode("utf-8")
+
+
+def resolve_definitions(reader, entries):
+    """Resolve MDX aliases once for both text queries and image extraction."""
+    if isinstance(reader, LocalDictionaryReader):
+        return [(e.key, reader.read_entry(e).decode(reader.encoding)) for e in entries]
+    pending = list(entries)
+    visited = set()
+    definitions = []
+    while pending:
+        entry = pending.pop(0)
+        marker = (entry.key.casefold(), entry.start)
+        if marker in visited:
+            continue
+        visited.add(marker)
+        record = reader.read_entry(entry).decode(reader.encoding, errors="replace").rstrip("\x00")
+        link = re.fullmatch(r"\s*@@@LINK=(.*?)\s*", record, flags=re.DOTALL)
+        if link:
+            target = link.group(1).strip()
+            matches = reader.find(target, exact=True, limit=100)
+            print(f"alias: {entry.key} -> {target}", file=sys.stderr)
+            if not matches:
+                print(f"alias target not found: {target}", file=sys.stderr)
+            pending.extend(matches)
+        else:
+            definitions.append((entry.key, record))
+    if visited and not definitions:
+        print("No definition resolved: alias cycle or missing target", file=sys.stderr)
+    return definitions
+
+
 def main(argv: list[str] | None = None) -> int:
     args = _make_parser().parse_args(argv)
-    reader = MDictReader(args.dictionary)
+    local = args.dictionary.is_dir()
+    reader = LocalDictionaryReader(args.dictionary) if local else MDictReader(args.dictionary)
     if args.command == "inspect":
         print(f"Title: {reader.header.get('Title', '')}")
         print(f"Encoding: {reader.encoding}")
@@ -304,12 +364,11 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "query":
         entries = reader.find(args.term, exact=not args.contains, limit=args.limit)
-        for index, entry in enumerate(entries):
+        definitions = resolve_definitions(reader, entries)
+        for index, (key, record) in enumerate(definitions):
             if index:
                 print("\n---")
-            print(f"[{entry.key}]")
-            raw = reader.read_entry(entry)
-            record = raw.decode(reader.encoding, errors="replace").rstrip("\x00")
+            print(f"[{key}]")
             if args.summary and not record.startswith("@@@LINK="):
                 label_match = re.search(
                     r'<span\s+class=["\']word["\']>(.*?)</span>', record, re.I | re.S
@@ -329,7 +388,7 @@ def main(argv: list[str] | None = None) -> int:
                     print(f"image: {source}")
             else:
                 print(record)
-        return 0 if entries else 1
+        return 0 if definitions else 1
     if args.command == "extract":
         entries = reader.find(args.key, exact=True, limit=2)
         if not entries:
@@ -340,22 +399,8 @@ def main(argv: list[str] | None = None) -> int:
         print(args.output)
         return 0
     if args.command == "images":
-        resource_reader = MDictReader(args.resources)
-        pending = [args.term]
-        visited: set[str] = set()
-        definitions: list[tuple[str, str]] = []
-        while pending:
-            current = pending.pop(0)
-            if current.casefold() in visited:
-                continue
-            visited.add(current.casefold())
-            for entry in reader.find(current, exact=True, limit=100):
-                record = reader.read_entry(entry).decode(reader.encoding, errors="replace").rstrip("\x00")
-                link = re.fullmatch(r"\s*@@@LINK=(.*?)\s*", record, flags=re.DOTALL)
-                if link:
-                    pending.append(link.group(1).strip())
-                else:
-                    definitions.append((entry.key, record))
+        resource_reader = None if local else MDictReader(args.resources)
+        definitions = resolve_definitions(reader, reader.find(args.term, exact=True, limit=100))
         if not definitions:
             print(f"entry not found: {args.term}", file=sys.stderr)
             return 1
@@ -364,6 +409,15 @@ def main(argv: list[str] | None = None) -> int:
         for definition_index, (key, record) in enumerate(definitions, start=1):
             print(f"[{key}]")
             for source in re.findall(r'<img\b[^>]*\bsrc=["\']([^"\']+)["\']', record, re.I):
+                if local:
+                    image_path = (reader.path / source).resolve()
+                    if not image_path.is_relative_to(reader.path.resolve()):
+                        raise ValueError("Image path leaves dictionary directory")
+                    extracted += 1
+                    destination = args.output_dir / f"{definition_index:02d}_{image_path.name}"
+                    destination.write_bytes(image_path.read_bytes())
+                    print(destination)
+                    continue
                 resource_key = "\\" + source.replace("/", "\\").lstrip("\\")
                 resources = resource_reader.find(resource_key, exact=True, limit=2)
                 if not resources:
