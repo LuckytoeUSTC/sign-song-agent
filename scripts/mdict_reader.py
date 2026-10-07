@@ -19,6 +19,7 @@ import struct
 import sys
 import zlib
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 from typing import BinaryIO, Iterable
 
@@ -91,6 +92,9 @@ class MDictReader:
         self._record_blocks: list[RecordBlock] = []
         self._block_starts: list[int] = []
         self._parse()
+        self._exact_index = {}
+        for entry in self.entries:
+            self._exact_index.setdefault(entry.key.casefold(), []).append(entry)
 
     @staticmethod
     def _parse_header_attrs(text: str) -> dict[str, str]:
@@ -227,10 +231,11 @@ class MDictReader:
     def find(self, term: str, exact: bool = True, limit: int = 20) -> list[Entry]:
         if exact:
             folded = term.casefold()
-            return [entry for entry in self.entries if entry.key.casefold() == folded][:limit]
+            return self._exact_index.get(folded, [])[:limit]
         folded = term.casefold()
         return [entry for entry in self.entries if folded in entry.key.casefold()][:limit]
 
+    @lru_cache(maxsize=8)
     def _read_record_block(self, index: int) -> bytes:
         block = self._record_blocks[index]
         with self.path.open("rb") as stream:
@@ -262,7 +267,7 @@ def _make_parser() -> argparse.ArgumentParser:
 
     query_cmd = sub.add_parser("query", help="query text records")
     query_cmd.add_argument("dictionary", type=Path)
-    query_cmd.add_argument("term")
+    query_cmd.add_argument("term", nargs="+", help="one or more words; reuse one dictionary reader")
     query_cmd.add_argument("--contains", action="store_true")
     query_cmd.add_argument("--limit", type=int, default=20)
     query_cmd.add_argument("--summary", action="store_true")
@@ -363,8 +368,13 @@ def main(argv: list[str] | None = None) -> int:
             print(entry.key)
         return 0
     if args.command == "query":
-        entries = reader.find(args.term, exact=not args.contains, limit=args.limit)
-        definitions = resolve_definitions(reader, entries)
+        definitions = []
+        for term in args.term:
+            entries = reader.find(term, exact=not args.contains, limit=args.limit)
+            resolved = resolve_definitions(reader, entries)
+            if not resolved:
+                print(f"未找到：{term}", file=sys.stderr)
+            definitions.extend(resolved)
         for index, (key, record) in enumerate(definitions):
             if index:
                 print("\n---")

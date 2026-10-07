@@ -70,3 +70,11 @@ python scripts/audit_docx.py '<工作台/歌题/讲义.docx>' --height 0.79
 桌面依赖自动安装命令：`python -m pip install -r scripts/desktop-requirements.txt`。Python 3.13 必须使用兼容的 typing_extensions；窗口使用系统 WebView2，缓存放在本机 LocalAppData/SignSongAgent，不写入教学资料。
 
 桌面入口为 `资料/规则与例句查询程序.pyw`，内部 HTML 位于 `scripts/query_page.html`，由脚本生成，老师无需打开。
+
+## 批量查词与参照版式
+
+同一次查词可在一个命令中传入多个词，例如：`python scripts/mdict_reader.py query <词典.mdx> 天空 高 住 --summary`。同一读取器复用词条索引与最近8个解压块，避免逐词重复打开和解析词典。含空格的指拼序列仍作为一个带引号的参数传入。
+
+例句与辨析案例按关键词出现次数分别排序、交替展示，避免一种结果占满；这只是文本匹配排序，智能体仍须判断实际适用性。规则反查与索引共用关联逻辑，包括条目标注和规则正文提及。
+
+制作前按选定参照填写本曲版式JSON，再传入 `make_handout.py --layout <版式.json>`。可配置：`font_name`（字体）、`font_size`（正文字号）、`title_size`（标题字号）、`heading_size`（小标题字号）、`image_height`（英寸）、`margin_horizontal`与`margin_vertical`（厘米）、`line_spacing`（正文行距倍数）。例如：`{"font_name":"SimSun","font_size":12,"image_height":0.79,"margin_horizontal":2}`。未填项使用默认值；`--height`可覆盖图高。支持一级至三级Markdown标题。段落样式、复杂表格等需要精确沿用时，直接局部编辑原Word，不为每首歌复制一套生成脚本。

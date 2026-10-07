@@ -54,28 +54,48 @@ def main():
  book=folder/'转写例句.xlsx'
  if book.exists():
   sheets=read_sheets(book);dialogues={}
+  if a.rule:
+   from build_rule_index import collect
+   _, _, associations = collect(sheets)
+   associated = {number for rule, number in associations if rule == a.rule}
   for row in sheets.get('会话上下文',[]):dialogues.setdefault(row.get('编号',row.get('会话编号','')),[]).append(f"第{row['轮次']}轮：{row['原文（含转写）']}")
   for row in sheets.get('转写例句',[]):
    source=row.get('来源文件','');category='教材' if '教程' in source else '小班' if '小班' in source else '手语歌讲义'
    if a.source and a.source.casefold() not in (source+' '+category).casefold():continue
-   if a.rule and not linked(row.get('关联规则',''),a.rule):continue
+   if a.rule and row.get('编号') not in associated:continue
    if a.keyword.casefold() not in '\n'.join(str(v) for v in row.values()).casefold():continue
    body='\n'.join(f'{k}：{v}' for k,v in row.items() if not k.startswith('_') and v)
    if a.context:
     match=re.search(r'会话编号：(D\d+)',row.get('上下文',''))
     if match:body+='\n完整会话：\n'+'\n'.join(dialogues.get(match.group(1),[]))
    hits.append(f'【{book.relative_to(P)} 第{row["_row"]}行】\n{body}')
- else:print('未找到转写例句.xlsx。')
+ else:
+  print('未找到转写例句.xlsx。')
+  from build_rule_index import collect
+  _, _, associations = collect({'转写例句': []})
+  associated = {number for rule, number in associations if rule == a.rule}
+ example_hits = hits
+ hits = []
  from build_case_catalog import read_case
  for revisions in sorted((P/'资料/讲义制作过程存档').glob('*/转写修改与辨析案例/*.md')):
   if not re.match(r'.+-M\d+ ', revisions.name):continue
   case=read_case(revisions)
   if a.source and a.source not in ('修改','讲义制作过程存档') and a.source.casefold() not in case['手语歌'].casefold():continue
-  if a.rule and not linked(case.get('关联规则',''),a.rule):continue
+  if a.rule and case.get('编号') not in associated:continue
   introduction='\n'.join(str(case.get(k,'')) for k in ('编号','title','何时参考','核心辨析','关联规则','手语歌'))
   if a.keyword.casefold() not in (case['_text'] if a.detail else introduction).casefold():continue
   body=case['_text'] if a.detail else '\n'.join(f'{k}：{case.get(k,"")}' for k in ('编号','何时参考','核心辨析','关联规则','手语歌'))+f'\n正文：{revisions}\n用 --detail 阅读完整修改经过。'
   hits.append(f'【{revisions.relative_to(P)}】\n{body.strip()}')
+ case_hits = hits
+ def relevance(hit):
+  return hit.casefold().count(a.keyword.casefold()) if a.keyword else 0
+ example_hits.sort(key=relevance, reverse=True)
+ case_hits.sort(key=relevance, reverse=True)
+ hits = []
+ for index in range(max(len(example_hits), len(case_hits))):
+  for group in (example_hits, case_hits):
+   if index < len(group):
+    hits.append(group[index])
  for hit in hits[:a.limit]:print(hit+'\n')
  print(f'找到{len(hits)}处，显示{min(len(hits),a.limit)}处。')
  if a.rule:print('关联包含支持例、不同用法和边界案例；未关联条目仍可用关键词搜索。')

@@ -6,7 +6,7 @@
 
 ## 下载
 
-打开 [3.0.0 Release](https://github.com/LuckytoeUSTC/sign-song-agent/releases/tag/v3.0.0)，下载 `sign-song-agent-v3.0.0.zip` 并解压。Release是固定发布版本；**Code → Download ZIP** 下载主分支最新内容，后续可能与Release不同。
+打开 [3.1.0 Release](https://github.com/LuckytoeUSTC/sign-song-agent/releases/tag/v3.1.0)，下载 `sign-song-agent-v3.1.0.zip` 并解压。Release是固定发布版本；**Code → Download ZIP** 下载主分支最新内容，后续可能与Release不同。
 
 下载包包含工作规范、脚本、说明、教材、讲义和修改案例。词典资源从云端下载：接管智能体自动准备国家通用手语词典，其它词典由用户选择。可下载词典见 [词典目录](dictionaries/可下载词典.md)。
 
@@ -23,8 +23,6 @@
 第一次接管可以说：
 
 > 请完整阅读 AGENTS.md，自动准备 Python、依赖和国家通用手语词典，再告诉我是否可以开始备课。其它词典先列出目录，等我选择。不修改讲义。
-
-开始新歌时，可指定类似歌曲的讲义，也可让智能体选择3—5份完整讲义；小班材料都会阅读。先确认代表性几句的文字转写，再制作全曲图解，具体流程见[备课流程图](备课流程图.pdf)与[使用说明](使用说明.md)。
 
 ## Python 与依赖
 
