@@ -1,12 +1,14 @@
 # 手语歌智能工坊：工具说明
 
+编号速查：`R01`公共转写规则，`E0001`转写例句，`D001`教材会话；`太阳-R01`和`太阳-M001`是太阳歌曲的本曲转写规则与修改案例。
+
 供智能体在调用工具、配置依赖和处理文档技术问题时查阅。备课流程与翻译要求见根目录`AGENTS.md`。
 
 `scripts/requirements.txt`记录工具所需的Python库：python-docx用于Word，pdfplumber用于PDF。由智能体先查找客户端自带或系统已有的兼容Python，环境已有这些库时无需重复安装。缺少依赖时由智能体在项目根目录自动执行`python -m pip install -r scripts/requirements.txt`；缺少Python时优先自动配置运行时。脚本失败后先由模型诊断并调整方案，确实无法完成才请老师执行最少的手动步骤。查MDX和检索Markdown的脚本不依赖这两个库。依赖清单不属于教学资料，无需手语老师手动维护。
 
-转写检索示例：`python scripts/search_cases.py 名字 --source 教材 --limit 3`。来源筛选匹配文件名、章节或“教材／优秀讲义”；检索读取Excel完整记录及辨析Markdown，包含原句、转写与前后文，返回原件位置。
+转写检索示例：`python scripts/search_cases.py 名字 --source 教材 --limit 3`。来源筛选匹配文件名或“教材／优秀讲义／小班／修改”。`python scripts/search_cases.py --rule R04`查规则说明及已关联案例；加`--context`展开教材完整会话。读取按工作表和列名定位，不依赖列顺序；返回编号、原件位置和链接。修改案例默认只显示引导，命中后加`--detail`读取正文。
 
-新增资料可用`python scripts/extract_examples.py '<原件>' --out '<工作台/临时提取.md>'`生成临时定位稿。核对PDF格式、同段多个转写和跨行括号后，将完整记录写入`资料/提取与检索/原句与手语转写.xlsx`，临时稿不作为第二份长期资料库。修改辨析全文维护Markdown，其目录表只记录检索摘要。
+新增资料可用`python scripts/extract_examples.py '<原件>' --out '<工作台/临时提取.md>'`生成临时定位稿。核对PDF格式、同段多个转写和跨行括号后，将完整记录写入`资料/规则与例句数据库/转写例句.xlsx`，临时稿不作为第二份长期资料库。修改辨析每例一个Markdown，保存在对应歌曲的“转写修改与辨析案例”内；修改正文或开头引导后，运行`python scripts/build_case_catalog.py`重新生成目录表。
 
 既有Word局部编辑时，不能给图片所在run直接赋`text`，否则会丢图。保留绘图、裁剪和尺寸，不从旧词典整图重建老师截图。
 
@@ -50,3 +52,11 @@ python scripts/audit_docx.py '<工作台/歌题/讲义.docx>' --height 0.79
 接管时运行 `python scripts/download_dictionaries.py --default`。查看目录运行 `python scripts/download_dictionaries.py --list`；用户选择后运行 `python scripts/download_dictionaries.py --dictionary "美术常用词通用手语"`。
 
 脚本仅使用标准库，读取 `dictionaries/resources.json` 的公开地址，不需要云端凭证。已有完整文件跳过，下载中断保留临时文件供重试；同名但不同长度的已有文件保留并要求确认。
+
+## 更新修改案例目录
+
+每个案例的“编号、手语歌、何时参考、核心辨析、关联规则”是目录的数据来源，正文单独保存。新增或修改后执行`python scripts/build_case_catalog.py`，自动重建`资料/规则与例句数据库/转写修改与辨析目录.xlsx`，无需手动改两份。脚本只使用Python标准库。检索本曲转写规则示例：`python scripts/search_cases.py --rule 太阳-R01`。
+
+更新资料后运行 `python scripts/build_rule_index.py`，自动生成规则到案例的 Excel 索引；只依赖标准库。Excel 表可按转写规则编号或案例编号双向筛选。修改案例目录生成命令同时更新各歌曲的 `.content`，不再手动维护目录链接。
+
+运行 `python scripts/build_query_page.py` 可更新单文件离线查询页面 `资料/规则与例句查询.html`；规则索引生成命令也会同步更新此页。页面由 Excel、规则正文和案例生成，不作为新的资料来源，不手工修改页面数据。
