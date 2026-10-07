@@ -4,12 +4,12 @@
 
 ## 下载
 
-仓库当前为 **private**，下载需要有仓库访问权限。打开 [1.0.0 Release](https://github.com/LuckytoeUSTC/sign-song-workshop/releases/tag/v1.0.0)：
+仓库当前为 **private**，下载需要有仓库访问权限。打开 [1.0.0 Release](https://github.com/LuckytoeUSTC/sign-song-agent/releases/tag/v1.0.0)：
 
 | 文件 | 内容 |
 | --- | --- |
-| `sign-song-workshop-v1.0.0.zip` | 完整主包：工作规范、工具、国家通用手语词典、教材、优秀讲义及实际修改案例 |
-| `sign-song-workshop-dictionaries-v1.0.0.zip` | 其它词典补充包，按需安装 |
+| `sign-song-agent-v1.0.0.zip` | 完整主包：工作规范、工具、国家通用手语词典、教材、优秀讲义及实际修改案例 |
+| `sign-song-agent-dictionaries-v1.0.0.zip` | 其它词典补充包，按需安装 |
 | `SHA256SUMS.txt` | 两个附件的 SHA-256 校验值 |
 
 解压主包，使用其中的 **手语歌智能工坊** 文件夹。**Code → Download ZIP** 仅下载源码与说明，不含词典和教学资料。
@@ -36,7 +36,7 @@ python -m pip install -r scripts/requirements.txt
 
 ## 安装词典补充包
 
-1. 解压 `sign-song-workshop-dictionaries-v1.0.0.zip`。
+1. 解压 `sign-song-agent-dictionaries-v1.0.0.zip`。
 2. 按需要选择词典，把它的**整个文件夹**复制到主包的 `手语歌智能工坊/dictionaries/`。
 3. 一起保留 MDX、MDD、CSS、图片、视频及其它配套资源，保持词典内部结构；不要只复制 MDX。
 4. 若已有同名文件夹，先核对来源和版本，不盲目覆盖。
@@ -49,3 +49,4 @@ python -m pip install -r scripts/requirements.txt
 ## 配置完成后
 
 日常备课见 [使用说明](使用说明.md)，工作台操作见 [工作台使用说明](工作台/使用说明.md)。MIT 许可证见 [LICENSE](LICENSE)；原创代码与原创说明适用 MIT，第三方词典、教材、图片和讲义按各自许可使用。
+
