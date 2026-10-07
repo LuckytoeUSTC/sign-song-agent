@@ -1,6 +1,7 @@
 """Search source examples, linked rules and human revision discussions."""
 from pathlib import Path
 import argparse,re,zipfile,xml.etree.ElementTree as E
+from urllib.parse import unquote
 P=Path(__file__).resolve().parents[1]
 def read_sheets(path):
  import posixpath
@@ -27,7 +28,7 @@ def read_sheets(path):
     if row.get('r')=='1':headers=values;continue
     record={name:values.get(col,'') for col,name in headers.items()};record['_row']=int(row.get('r'))
     for col,name in headers.items():
-     if col+row.get('r') in links:record[name]=str((path.parent/links[col+row.get('r')]).resolve())
+     if col+row.get('r') in links:record[name]=str((path.parent/unquote(links[col+row.get('r')])).resolve())
     records.append(record)
    result[s.get('name')]=records
  return result

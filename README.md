@@ -2,9 +2,11 @@
 
 面向手语老师的手语歌备课智能体工作空间，结合大模型、工作规范与本地工具，辅助理解歌词、讨论转写、查词选图、制作 Word 讲义和检查打印稿。
 
+[备课流程图（PDF）](备课流程图.pdf)
+
 ## 下载
 
-打开 [2.1.0 Release](https://github.com/LuckytoeUSTC/sign-song-agent/releases/tag/v2.1.0)，下载 `sign-song-agent-v2.1.0.zip` 并解压。也可以使用 **Code → Download ZIP**。
+打开 [3.0.0 Release](https://github.com/LuckytoeUSTC/sign-song-agent/releases/tag/v3.0.0)，下载 `sign-song-agent-v3.0.0.zip` 并解压。也可以使用 **Code → Download ZIP**。
 
 下载包包含工作规范、脚本、说明、教材、讲义和修改案例。词典资源从云端下载：接管智能体自动准备国家通用手语词典，其它词典由用户选择。可下载词典见 [词典目录](dictionaries/可下载词典.md)。
 
@@ -24,9 +26,7 @@
 
 这一步交给智能体处理，手语老师无需先手动下载安装。
 
-智能体先查找客户端自带或电脑已有的 Python 3.10 及更新版本，优先使用现成运行时。缺少依赖时自动安装，缺少 Python 时尝试自动配置可用运行时。下载词典的脚本只使用 Python 标准库，无需 AWS CLI、R2 账号或密钥。
-
-自动脚本未能完成时，由模型根据错误诊断、调整方案并继续处理；确实无法自动完成时，再给老师最少的手动步骤。工具命令供智能体查阅，见 [TOOLING.md](scripts/TOOLING.md)。
+已有Python会优先使用，缺少的环境和依赖由智能体自动准备。词典下载不需要你配置AWS CLI、R2账号或密钥；确实需要你操作时，智能体会说明具体步骤。
 
 ## 选择其它词典
 
