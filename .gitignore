@@ -5,12 +5,13 @@ __pycache__/
 .env.*
 !.env.example
 工作台/*
-!工作台/README.md
+!工作台/使用说明.md
 dictionaries/*
-!dictionaries/README.md
+!dictionaries/词典说明.md
 资料/*
-!资料/README.md
+!资料/资料配置说明.md
 !资料/提取与检索/
 资料/提取与检索/*
-!资料/提取与检索/README.md
+!资料/提取与检索/检索说明.md
 ~$*
+
