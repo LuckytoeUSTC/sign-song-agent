@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+.venv/
+.env
+.env.*
+!.env.example
+工作台/*
+!工作台/README.md
+dictionaries/*
+!dictionaries/README.md
+资料/*
+!资料/README.md
+!资料/提取与检索/
+资料/提取与检索/*
+!资料/提取与检索/README.md
+~$*
