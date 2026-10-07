@@ -3,28 +3,32 @@
 <title>规则与例句查询</title>
 <style>
 :root{font-family:system-ui,"Microsoft YaHei",sans-serif;color:#26372f;background:#f5f6f3;font-size:16px}*{box-sizing:border-box}body{margin:0}main{max-width:1120px;margin:auto;padding:40px 24px}h1{font-size:28px;margin:0 0 26px;font-weight:650}header{display:flex;justify-content:space-between;align-items:center;gap:16px}.filters{display:grid;grid-template-columns:2fr 1.5fr 1fr;gap:12px;margin-bottom:20px}input,select,button{font:inherit;border:1px solid #ccd4ce;border-radius:8px;background:white;color:inherit;padding:12px;min-width:0}input:focus,select:focus,button:focus-visible,a:focus-visible{outline:3px solid #aacbbb;outline-offset:2px}button,a{cursor:pointer}button:hover{background:#edf3ed}#count{white-space:nowrap;color:#526459;margin-bottom:26px}.card,.rule{background:white;border:1px solid #dce2db;border-radius:12px;padding:22px;margin-bottom:14px}.rule{background:#edf3ec}h2{font-size:20px;line-height:1.6;margin:8px 0 14px}.meta{display:flex;gap:12px;color:#526459;flex-wrap:wrap}.label{font-weight:600;margin-right:10px}p{line-height:1.8;margin:10px 0;overflow-wrap:anywhere}.chips{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 0}.chips button{padding:6px 10px;border-radius:6px;background:#f2f5ef}a{color:#356549;text-underline-offset:4px}details{margin-top:16px;border-top:1px solid #e6ebe4;padding-top:14px}summary{cursor:pointer}.text{white-space:pre-wrap;line-height:1.9;overflow-wrap:anywhere}#more{display:block;margin:24px auto}.empty{text-align:center;padding:50px;color:#526459}@media(max-width:700px){main{padding:24px 16px}.filters{grid-template-columns:1fr}h1{font-size:24px}.card{padding:18px}header{align-items:baseline}}
+[hidden]{display:none!important}mark{background:#ffe7a0;color:inherit;border-radius:3px;padding:0 1px}
 </style>
-<main><header><h1>规则与例句查询</h1><span id="count" aria-live="polite"></span></header>
-<div class="filters"><input id="keyword" type="search" placeholder="搜索原句、转写或辨析" aria-label="关键词"><select id="rule" aria-label="转写规则"><option value="">全部转写规则</option></select><select id="source" aria-label="资料来源"><option value="">全部来源</option><option>教材</option><option>小班讲义</option><option>优秀讲义</option><option>修改案例</option></select></div>
+<main><header><h1>规则与例句查询</h1></header>
+<div class="filters"><input id="keyword" type="search" placeholder="搜索原句、转写或辨析" aria-label="关键词"><select id="rule" aria-label="转写规则"><option value="">全部转写规则</option></select><select id="source" aria-label="资料来源"><option value="">全部来源</option><option>教材</option><option>小班讲义</option><option>手语歌讲义</option><option>转写辨析案例</option></select></div>
+<div id="count" aria-live="polite"></div>
 <section id="rulebody"></section><section id="results"></section><button id="more" hidden>显示更多</button></main>
 <script id="data" type="application/json">__QUERY_DATA__</script>
 <script>
 'use strict';
 const data=JSON.parse(document.querySelector('#data').textContent),$=id=>document.getElementById(id);
-let limit=30,filtered=[];
-function el(tag,text,cls){const n=document.createElement(tag);if(text)n.textContent=text;if(cls)n.className=cls;return n}
-function anchor(url,text){const n=el('a',text);n.href=url;return n}
+let limit=30,filtered=[],activeWords=[];
+function addText(n,text){text=String(text);const words=activeWords;let start=0;const lower=text.toLocaleLowerCase();while(start<text.length){let at=-1,word='';for(const w of words){const i=lower.indexOf(w,start);if(i>=0&&(at<0||i<at)){at=i;word=w}}if(at<0){n.append(document.createTextNode(text.slice(start)));break}if(at>start)n.append(document.createTextNode(text.slice(start,at)));const mark=document.createElement('mark');mark.textContent=text.slice(at,at+word.length);n.append(mark);start=at+word.length}return n}
+function el(tag,text,cls){const n=document.createElement(tag);if(text)addText(n,text);if(cls)n.className=cls;return n}
+function anchor(url,text){const n=el('a',text);n.href=url;n.onclick=async event=>{if(window.pywebview?.api){event.preventDefault();const result=await window.pywebview.api.open_source(url);if(!result.ok)window.alert(result.error)}};return n}
 for(const r of data.rules){const o=el('option',r.id+' '+r.title);o.value=r.id;$('rule').append(o)}
 for(const e of data.entries)e.search=[e.id,e.title,e.expression,e.context,e.location,e.full,...e.rules.map(r=>r.id)].join(' ').toLocaleLowerCase();
 function render(reset=true){if(reset)limit=30;const words=$('keyword').value.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean),rule=$('rule').value,source=$('source').value;
+activeWords=[...words].sort((a,b)=>b.length-a.length);
 filtered=data.entries.filter(e=>(!source||e.source===source)&&(!rule||e.rules.some(r=>r.id===rule))&&words.every(w=>e.search.includes(w)));
 $('count').textContent=filtered.length+' 条';$('rulebody').replaceChildren();
 if(rule){const r=data.rules.find(r=>r.id===rule),box=el('article',null,'rule');box.append(el('h2',r.id+' '+r.title));const d=el('details');d.append(el('summary','查看转写规则'),el('div',r.body,'text'));box.append(d,anchor(r.link,'规则原文'));$('rulebody').append(box)}
 $('results').replaceChildren();
 for(const e of filtered.slice(0,limit)){const card=el('article',null,'card'),meta=el('div',null,'meta');meta.append(el('span',e.id),el('span',e.source));card.append(meta,el('h2',e.title));
-for(const [label,text] of [[e.source==='修改案例'?'核心辨析':'手语转写',e.expression],[e.source==='修改案例'?'何时参考':'上下文',e.context]])if(text){const p=el('p');p.append(el('span',label,'label'),document.createTextNode(text));card.append(p)}
-if(e.location)card.append(el('p',e.location));const chips=el('div',null,'chips');for(const r of e.rules){const b=el('button',r.id+(r.basis==='规则正文提及'?' · 正文提及':''));b.onclick=()=>{$('rule').value=r.id;render()};chips.append(b)}card.append(chips);
-if(e.full){const d=el('details');d.append(el('summary',e.source==='修改案例'?'完整修改与辨析':'完整会话'),el('div',e.full,'text'));card.append(d)}if(e.link){const p=el('p');p.append(anchor(e.link,e.source==='修改案例'?'案例原文':'查看原件'));card.append(p)}$('results').append(card)}
+for(const [label,text] of [[e.source==='转写辨析案例'?'核心辨析':'手语转写',e.expression],[e.source==='转写辨析案例'?'何时参考':'上下文',e.context]])if(text){const p=el('p');p.append(el('span',label,'label'));addText(p,text);card.append(p)}
+const chips=el('div',null,'chips');for(const r of e.rules){const b=el('button',r.id+(r.basis==='规则正文提及'?' · 正文提及':''));b.onclick=()=>{$('rule').value=r.id;render()};chips.append(b)}card.append(chips);
+if(e.full){const d=el('details');d.append(el('summary',e.source==='转写辨析案例'?'完整修改与辨析':'完整会话'),el('div',e.full,'text'));card.append(d)}if(e.link){const p=el('p');p.append(document.createTextNode(e.source==='转写辨析案例'?'收录案例详情：':'位置：'));p.append(anchor(e.link,e.source_title));if(e.location)addText(p,((e.source==='教材'||e.source==='小班讲义')?' · ':(e.location.startsWith('第')?'':' · '))+e.location);card.append(p)}$('results').append(card)}
 if(!filtered.length)$('results').append(el('div','没有找到相关记录','empty'));$('more').hidden=filtered.length<=limit;
 }
 let timer;$('keyword').oninput=()=>{clearTimeout(timer);timer=setTimeout(()=>render(),120)};$('rule').onchange=$('source').onchange=()=>render();$('more').onclick=()=>{limit+=30;render(false)};render();

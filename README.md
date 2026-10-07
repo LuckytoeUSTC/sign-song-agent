@@ -4,7 +4,7 @@
 
 ## 下载
 
-打开 [2.0.0 Release](https://github.com/LuckytoeUSTC/sign-song-agent/releases/tag/v2.0.0)，下载 `sign-song-agent-v2.0.0.zip` 并解压。也可以使用 **Code → Download ZIP**。
+打开 [2.1.0 Release](https://github.com/LuckytoeUSTC/sign-song-agent/releases/tag/v2.1.0)，下载 `sign-song-agent-v2.1.0.zip` 并解压。也可以使用 **Code → Download ZIP**。
 
 下载包包含工作规范、脚本、说明、教材、讲义和修改案例。词典资源从云端下载：接管智能体自动准备国家通用手语词典，其它词典由用户选择。可下载词典见 [词典目录](dictionaries/可下载词典.md)。
 

@@ -1,13 +1,15 @@
 """Build a disposable reverse index from existing rule and case records."""
 from pathlib import Path
 import re
-from build_case_catalog import ROOT, read_case, save_xlsx
+from build_case_catalog import ROOT, read_case
 from search_cases import read_sheets
 
 
-def collect():
+def collect(sheets=None):
     folder = ROOT / '资料/规则与例句数据库'
-    examples = read_sheets(folder / '转写例句.xlsx')['转写例句']
+    if sheets is None:
+        sheets = read_sheets(folder / '转写例句.xlsx')
+    examples = sheets['转写例句']
     cases = [read_case(p) for p in (ROOT / '资料/讲义制作过程存档').glob('*/转写修改与辨析案例/*.md')
              if re.match(r'.+-M\d+ ', p.name)]
     def source_location(value):
@@ -44,21 +46,16 @@ def collect():
 
 
 def build():
-    records, rules, associations = collect()
     folder = ROOT / '资料/规则与例句数据库'
-    headers = ['转写规则编号', '转写规则名称', '案例编号', '原句／问题', '转写／核心辨析',
-               '上下文／何时参考', '关联依据', '案例／原件位置']
-    rows = [[rule, rules[rule][0], number, *records[number][:3], basis, records[number][3]]
-            for (rule, number), basis in sorted(associations.items())]
-    import os
-    links = [os.path.relpath(ROOT / row[7], folder).replace('\\', '/') if row[7] else '' for row in rows]
-    for row in rows:
-        row[7] = '查看'
-    save_xlsx(dict(headers=headers[:-1]+['查看正文／原件'], rows=rows, links=links, linkcol=7,
-                   widths=[18,38,16,52,65,60,24,20], sheet='规则与案例索引'), folder/'规则与例句索引.xlsx')
+    sheets = read_sheets(folder / '转写例句.xlsx')
+    records, rules, associations = collect(sheets)
+    import json
+    data = {'rules': {r: {'title': v[0], 'body': v[1], 'source': v[2]} for r, v in rules.items()},
+            'links': [{'rule': r, 'case': c, 'basis': b} for (r, c), b in sorted(associations.items())]}
+    (folder/'规则与例句索引.json').write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding='utf-8')
     from build_query_page import build as build_page
-    build_page()
-    print(f'反向索引：{len(rules)}条转写规则／待审建议，{len(rows)}条案例关联。')
+    build_page((records, rules, associations), sheets)
+    print(f'反向索引：{len(rules)}条转写规则／待审建议，{len(associations)}条案例关联。')
 
 
 if __name__ == '__main__':

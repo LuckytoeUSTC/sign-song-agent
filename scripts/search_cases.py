@@ -55,7 +55,7 @@ def main():
   sheets=read_sheets(book);dialogues={}
   for row in sheets.get('会话上下文',[]):dialogues.setdefault(row.get('编号',row.get('会话编号','')),[]).append(f"第{row['轮次']}轮：{row['原文（含转写）']}")
   for row in sheets.get('转写例句',[]):
-   source=row.get('来源文件','');category='教材' if '教程' in source else '小班' if '小班' in source else '优秀讲义'
+   source=row.get('来源文件','');category='教材' if '教程' in source else '小班' if '小班' in source else '手语歌讲义'
    if a.source and a.source.casefold() not in (source+' '+category).casefold():continue
    if a.rule and not linked(row.get('关联规则',''),a.rule):continue
    if a.keyword.casefold() not in '\n'.join(str(v) for v in row.values()).casefold():continue

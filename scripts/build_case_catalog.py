@@ -40,7 +40,7 @@ def catalogue():
     rows = [[c['编号'], c['title'], c['何时参考'], c['核心辨析'], c.get('关联规则', ''), c['手语歌'], '查看'] for c in cases]
     import os
     links = [os.path.relpath(c['_path'], folder).replace('\\', '/') for c in cases]
-    return dict(filename='转写修改与辨析目录.xlsx', sheet='转写修改与辨析目录', headers=HEADERS,
+    return dict(filename='转写辨析案例.xlsx', sheet='转写辨析案例', headers=HEADERS,
                 rows=rows, links=links, linkcol=6, widths=WIDTHS)
 
 
@@ -66,7 +66,7 @@ def save_xlsx(data, output):
         lengths = [sum(max(1, (sum(2 if unicodedata.east_asian_width(c) in 'WF' else 1 for c in line)+w-1)//w) for line in str(v).splitlines()) for v,w in zip(values,widths)]
         row = xml('row', {'r': str(n), 'ht': str(32 if n==1 else max(42, max(lengths,default=1)*16+10)), 'customHeight': '1'}, records)
         for c, value in enumerate(values):
-            cell = xml('c', {'r': chr(65+c)+str(n), 't': 'inlineStr', 's': '1' if n==1 else '2' if n%2==0 else '0'}, row)
+            cell = xml('c', {'r': chr(65+c)+str(n), 't': 'inlineStr', 's': '1' if n==1 else '2' if n%2==0 else '3'}, row)
             inline = xml('is', parent=cell)
             xml('t', parent=inline).text = str(value or '')
     hyperlinks = xml('hyperlinks', parent=sheet)
@@ -84,7 +84,7 @@ def save_xlsx(data, output):
     xml('tableStyleInfo',{'name':'TableStyleLight1','showFirstColumn':'0','showLastColumn':'0','showRowStripes':'0','showColumnStripes':'0'},table)
     workbook = xml('workbook');sheets = xml('sheets', parent=workbook)
     xml('sheet', {'name':data['sheet'],'sheetId':'1','{'+R+'}id':'sheet1'}, sheets)
-    styles=f'''<styleSheet xmlns="{M}"><fonts count="2"><font><sz val="11"/><name val="等线"/></font><font><b/><sz val="11"/><name val="等线"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFF2F2F2"/></patternFill></fill></fills><borders count="1"><border/></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="3"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf><xf numFmtId="0" fontId="0" fillId="2" borderId="0" xfId="0" applyFill="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>'''
+    styles=f'''<styleSheet xmlns="{M}"><fonts count="2"><font><sz val="11"/><name val="等线"/></font><font><b/><sz val="11"/><name val="等线"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFF2F2F2"/></patternFill></fill></fills><borders count="1"><border/></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="4"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf><xf numFmtId="0" fontId="0" fillId="2" borderId="0" xfId="0" applyFill="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>'''
     types='''<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/xl/tables/table1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.table+xml"/></Types>'''
     packages={'[Content_Types].xml':types,'_rels/.rels':f'<Relationships xmlns="{PKG}"><Relationship Id="root" Type="{R}/officeDocument" Target="xl/workbook.xml"/></Relationships>',
       'xl/workbook.xml':ET.tostring(workbook,encoding='utf-8'),'xl/styles.xml':styles,
@@ -97,7 +97,7 @@ def save_xlsx(data, output):
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--out',type=Path,default=ROOT/'资料/规则与例句数据库/转写修改与辨析目录.xlsx')
+    parser.add_argument('--out',type=Path,default=ROOT/'资料/规则与例句数据库/转写辨析案例.xlsx')
     parser.add_argument('--json',type=Path,help='Export data for another spreadsheet renderer')
     args=parser.parse_args();data=catalogue()
     if args.json:args.json.write_text(json.dumps(data,ensure_ascii=False),encoding='utf-8')
