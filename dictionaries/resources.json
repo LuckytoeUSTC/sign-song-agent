@@ -1,0 +1,202 @@
+{
+  "base_url": "https://pub-7c6c43b44a9c41b394ac4250dbb7fb86.r2.dev",
+  "dictionaries": {
+    "中国手语（网站老版本）": {
+      "default": false,
+      "files": [
+        {
+          "key": "dictionaries/中国手语（网站老版本）/csl_old_web.css",
+          "size": 1076
+        },
+        {
+          "key": "dictionaries/中国手语（网站老版本）/中国手语（Web）.mdd",
+          "size": 28621557
+        },
+        {
+          "key": "dictionaries/中国手语（网站老版本）/中国手语（Web）.mdx",
+          "size": 371061
+        },
+        {
+          "key": "dictionaries/中国手语（网站老版本）/中国手语（Web）.png",
+          "size": 6972
+        }
+      ]
+    },
+    "中国手语（老版）": {
+      "default": false,
+      "files": [
+        {
+          "key": "dictionaries/中国手语（老版）/csl_old.css",
+          "size": 1458
+        },
+        {
+          "key": "dictionaries/中国手语（老版）/中国手语（老版）.jpg",
+          "size": 35891
+        },
+        {
+          "key": "dictionaries/中国手语（老版）/中国手语（老版）.mdd",
+          "size": 158383593
+        },
+        {
+          "key": "dictionaries/中国手语（老版）/中国手语（老版）.mdx",
+          "size": 441347
+        }
+      ]
+    },
+    "体育专业手语（老版）": {
+      "default": false,
+      "files": [
+        {
+          "key": "dictionaries/体育专业手语（老版）/csl_pe_old.css",
+          "size": 782
+        },
+        {
+          "key": "dictionaries/体育专业手语（老版）/体育专业手语（老版）.jpg",
+          "size": 626720
+        },
+        {
+          "key": "dictionaries/体育专业手语（老版）/体育专业手语（老版）.mdd",
+          "size": 39275833
+        },
+        {
+          "key": "dictionaries/体育专业手语（老版）/体育专业手语（老版）.mdx",
+          "size": 91036
+        }
+      ]
+    },
+    "体育和律动常用词通用手语": {
+      "default": false,
+      "files": [
+        {
+          "key": "dictionaries/体育和律动常用词通用手语/csl_pe.css",
+          "size": 894
+        },
+        {
+          "key": "dictionaries/体育和律动常用词通用手语/csl.css",
+          "size": 1531
+        },
+        {
+          "key": "dictionaries/体育和律动常用词通用手语/体育和律动常用词通用手语.jpg",
+          "size": 541139
+        },
+        {
+          "key": "dictionaries/体育和律动常用词通用手语/体育和律动常用词通用手语.mdd",
+          "size": 66507136
+        },
+        {
+          "key": "dictionaries/体育和律动常用词通用手语/体育和律动常用词通用手语.mdx",
+          "size": 116405
+        }
+      ]
+    },
+    "台灣手語線上辭典_WebM": {
+      "default": false,
+      "files": [
+        {
+          "key": "dictionaries/台灣手語線上辭典_WebM/twsl.css",
+          "size": 1363
+        },
+        {
+          "key": "dictionaries/台灣手語線上辭典_WebM/台灣手語線上辭典_WebM.mdd",
+          "size": 287327730
+        },
+        {
+          "key": "dictionaries/台灣手語線上辭典_WebM/台灣手語線上辭典_WebM.mdx",
+          "size": 255536
+        }
+      ]
+    },
+    "国家通用手语词典": {
+      "default": true,
+      "files": [
+        {
+          "key": "dictionaries/国家通用手语词典/csl.css",
+          "size": 1531
+        },
+        {
+          "key": "dictionaries/国家通用手语词典/国家通用手语词典.jpg",
+          "size": 3290589
+        },
+        {
+          "key": "dictionaries/国家通用手语词典/国家通用手语词典.mdd",
+          "size": 369328137
+        },
+        {
+          "key": "dictionaries/国家通用手语词典/国家通用手语词典.mdx",
+          "size": 596231
+        }
+      ]
+    },
+    "理科专业手语（老版）": {
+      "default": false,
+      "files": [
+        {
+          "key": "dictionaries/理科专业手语（老版）/csl_sc_o.css",
+          "size": 871
+        },
+        {
+          "key": "dictionaries/理科专业手语（老版）/理科专业手语（老版）.jpg",
+          "size": 35861
+        },
+        {
+          "key": "dictionaries/理科专业手语（老版）/理科专业手语（老版）.mdd",
+          "size": 28131003
+        },
+        {
+          "key": "dictionaries/理科专业手语（老版）/理科专业手语（老版）.mdx",
+          "size": 137426
+        }
+      ]
+    },
+    "美术常用词通用手语": {
+      "default": false,
+      "files": [
+        {
+          "key": "dictionaries/美术常用词通用手语/csl_art.css",
+          "size": 8302
+        },
+        {
+          "key": "dictionaries/美术常用词通用手语/csl.css",
+          "size": 1531
+        },
+        {
+          "key": "dictionaries/美术常用词通用手语/美术常用词通用手语.jpg",
+          "size": 4097711
+        },
+        {
+          "key": "dictionaries/美术常用词通用手语/美术常用词通用手语.mdd",
+          "size": 67580220
+        },
+        {
+          "key": "dictionaries/美术常用词通用手语/美术常用词通用手语.mdx",
+          "size": 105785
+        }
+      ]
+    },
+    "计算机常用词通用手语": {
+      "default": false,
+      "files": [
+        {
+          "key": "dictionaries/计算机常用词通用手语/csl_it.css",
+          "size": 7115
+        },
+        {
+          "key": "dictionaries/计算机常用词通用手语/csl.css",
+          "size": 1531
+        },
+        {
+          "key": "dictionaries/计算机常用词通用手语/计算机常用词通用手语.jpg",
+          "size": 2105063
+        },
+        {
+          "key": "dictionaries/计算机常用词通用手语/计算机常用词通用手语.mdd",
+          "size": 135591318
+        },
+        {
+          "key": "dictionaries/计算机常用词通用手语/计算机常用词通用手语.mdx",
+          "size": 92707
+        }
+      ]
+    }
+  }
+}

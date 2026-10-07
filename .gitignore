@@ -7,7 +7,8 @@ __pycache__/
 工作台/*
 !工作台/使用说明.md
 dictionaries/*
-!dictionaries/词典说明.md
+!dictionaries/可下载词典.md
+!dictionaries/resources.json
 ~$*
 
 

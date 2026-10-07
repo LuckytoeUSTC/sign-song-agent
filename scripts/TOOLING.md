@@ -44,3 +44,9 @@ python scripts/audit_docx.py '<工作台/歌题/讲义.docx>' --height 0.79
 
 
 
+
+## 云端词典下载
+
+接管时运行 `python scripts/download_dictionaries.py --default`。查看目录运行 `python scripts/download_dictionaries.py --list`；用户选择后运行 `python scripts/download_dictionaries.py --dictionary "美术常用词通用手语"`。
+
+脚本仅使用标准库，读取 `dictionaries/resources.json` 的公开地址，不需要云端凭证。已有完整文件跳过，下载中断保留临时文件供重试；同名但不同长度的已有文件保留并要求确认。
