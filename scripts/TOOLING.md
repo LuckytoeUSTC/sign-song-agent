@@ -78,3 +78,41 @@ python scripts/audit_docx.py '<工作台/歌题/讲义.docx>' --height 0.79
 例句与辨析案例按关键词出现次数分别排序、交替展示，避免一种结果占满；这只是文本匹配排序，智能体仍须判断实际适用性。规则反查与索引共用关联逻辑，包括条目标注和规则正文提及。
 
 制作前按选定参照填写本曲版式JSON，再传入 `make_handout.py --layout <版式.json>`。可配置：`font_name`（字体）、`font_size`（正文字号）、`title_size`（标题字号）、`heading_size`（小标题字号）、`image_height`（英寸）、`margin_horizontal`与`margin_vertical`（厘米）、`line_spacing`（正文行距倍数）。例如：`{"font_name":"SimSun","font_size":12,"image_height":0.79,"margin_horizontal":2}`。未填项使用默认值；`--height`可覆盖图高。支持一级至三级Markdown标题。段落样式、复杂表格等需要精确沿用时，直接局部编辑原Word，不为每首歌复制一套生成脚本。
+
+## 制作输入可选扩展 3.1.1
+
+旧Markdown命令、标记、图片语法、--height、--layout与全部原版式字段不变，默认仍按Markdown读取与原样排版。试排与正式稿共用make_handout.py；文本读取、数据检查、add_picture等排版函数可复用，但不要另写一套Word生成器。
+
+只有显式加`--input-format json`才读取制作JSON。顶层`version: 1`、`blocks`数组；标题块使用`heading`和可选`level`（1—3）；正文使用`text`，或`lyrics`与`transcription`。每块可有唯一`id`。图片`images`数组的`path`相对制作JSON所在目录，直接指向老师已有截图或裁图；程序不追查词典、替换图或改写图片。`entry`、`sense`、`source`是内部追溯信息，`action`记录实际采用的动作部分，`alt`是无障碍替代文本，均不自动印成标签。图旁`note`是已确认的必要短说明，排在对应图示后；`record`只保留长解释，永不打印。不要把长记录填入note，或把数据中的候选冒充老师确认。
+
+```json
+{"version":1,"blocks":[
+ {"heading":"合成示例"},
+ {"id":"a","lyrics":"示例句","transcription":"*动作①++*/~~省略②~~","images":[
+  {"path":"已有截图.png","entry":"内部词条名","sense":"①","source":"原件出处","action":"实际采用的动作部分","note":"方向调整","record":"完整解释留在备课记录","reference":true,"crop":[0,0,100,100]}
+ ]},
+ {"repeat_of":"a","omit_images":true,"note":"重复段沿用前述图示"}
+]}
+```
+
+示例裁图坐标须按实际原图改写：crop为原图像素范围[left, top, right, bottom]，右、下边界不包含；没有crop就保留整张已选截图。Word用原生裁剪，不改磁盘原图，保持所取区域比例。坐标合法不代表未裁掉动作，制作前必须看原图；reference:true保留原生参考图虚线框。
+
+repeat_of只引用前面已定义的块id；自动复用原句、转写和选图，不能再存一份正文。omit_images:true明确省图；不设或false则复用图片。需要刻意不同的方案时另写独立块，不强行同步。块级note用于已要求的重复段说明或短注，完整解释放record。图片名不影响标签；要显示短说明必须明确提供note，不自动生成栏目。
+
+```powershell
+python scripts/make_handout.py '<内容.json>' --input-format json --out '<新稿.docx>' --layout '<原版式.json>'
+python scripts/audit_docx.py '<新稿.docx>' --source '<内容.json>'
+python scripts/audit_docx.py '<旧稿.docx>'
+```
+
+检查入口旧调用与audit(path,height)返回值保留。错误报告已确认的结构或指定输入不一致，警告报告可能的版式问题，人工核对列出机器不能确认的动作与页面问题；旧项目无新数据字段仍可检查，不要求补字段。只有明确传--source才按指定制作输入核对正文、短注释、图片数和裁图；旧Markdown用--input-format markdown。所有检查只读，不自动修改Word、PDF或歌曲。图片统计只输出到内部检查。
+
+## 覆盖更新接管工具 3.1.1
+
+更新说明见根目录AGENTS.md标记区块。`make_handout.py --update-action check`不写教学资料，以临时合成稿核对兼容，读取本机记录；`--update-action fail --update-note "已完成；未完成及原因"`保存未完成状态；`--update-action complete --update-note "实际调整与验证结果"`由智能体在全部接管验证成功后调用。complete再次检查兼容，保存本机记录及清理前AGENTS备份，且仅清理本版本区块；本机结果不会随更新包分发。失败保留说明，修复后可重试；重新覆盖带回同版说明也会核对文件指纹。
+
+这不是安装器，也不自动推断任务阶段或下载词典。接管智能体负责先核对任务、已确认选择及所需环境，必要配置修改先备份；完成机器兼容检查、任务与必要环境核对后才调用complete；若本机进行试排，记录实际页面检查结果，缺渲染器不得虚报。制作交付仍必须逐页检查。交付源码与更新包不得提前清理区块。测试仅在`python -m unittest discover -s scripts/tests -v`下用临时合成数据运行，不触碰歌曲工作台。
+
+参考图虚线框留边：旧Markdown默认保持原排版；遇到上边截断，可在本曲版式JSON中明确加`"reference_frame_padding": true`。该选项把图片行设置为至少“图高＋6磅”的行高并内收图框，不改图高、比例或原图像素；它可能影响分页，须按完整页面试排确认。默认false，不会在覆盖更新时自动修改旧版式文件。新旧内容输入均可选择启用。
+
+制作代码职责：make_handout.py负责制作输入与可复用Word排版，audit_docx.py负责只读检查，handout_update.py仅封装本机接管状态与兼容检查，无独立命令入口。后续先复用现有函数；新增选项须显式启用，不能复制生成器或硬编码具体歌曲。更新模块也纳入版本指纹，模块变更会要求重新检查。
