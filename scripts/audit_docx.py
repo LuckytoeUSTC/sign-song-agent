@@ -2,10 +2,12 @@
 from pathlib import Path
 from collections import Counter
 import argparse
+import io
 import re
 from docx import Document
 from docx.enum.text import WD_LINE_SPACING
 from docx.image.image import Image
+from docx.oxml.ns import qn
 
 
 def effective(r, p, attribute):
@@ -21,6 +23,17 @@ def effective(r, p, attribute):
     return None
 
 
+def _crop_values(drawing):
+    found = drawing.xpath('.//a:srcRect')
+    return tuple(int(found[0].get(k, '0')) for k in ('l', 't', 'r', 'b')) if found else (0, 0, 0, 0)
+
+
+def _selected_bytes(drawing, document):
+    blips = drawing.xpath('.//a:blip')
+    part = document.part.related_parts.get(blips[0].get(qn('r:embed'))) if blips else None
+    return part.blob if part is not None else None
+
+
 def inspect_docx(path, height=None, source=None, input_format='json'):
     """No writes. Missing optional production fields are not errors."""
     d = Document(path)
@@ -28,6 +41,7 @@ def inspect_docx(path, height=None, source=None, input_format='json'):
     manual = ['逐页查看导出PDF或页面图，核对分页、图框、文字和留白。',
               '手形、箭头是否被裁掉、借图是否适当及动作自然度须看原图并由老师试打；静态检查不能确认。']
     fonts, sizes = Counter(), Counter()
+    image_headers = {}  # Per-document cache; never retained across file changes.
     transcriptions, images = [], 0
     width = min(s.page_width - s.left_margin - s.right_margin for s in d.sections)
     paragraphs = list(d.paragraphs) + [p for t in d.tables for row in t.rows for c in row.cells for p in c.paragraphs]
@@ -66,18 +80,15 @@ def inspect_docx(path, height=None, source=None, input_format='json'):
             # Compare stored image geometry to the visible crop; no semantic claims.
             blips = drawing.xpath('.//a:blip')
             if blips and h > 0:
-                from docx.oxml.ns import qn
                 rel = blips[0].get(qn('r:embed'))
                 if rel and rel in d.part.related_parts:
                     try:
-                        import io
-                        image = Image.from_file(io.BytesIO(d.part.related_parts[rel].blob))
-                        crops = drawing.xpath('.//a:srcRect')
-                        crop = crops[0] if crops else None
-                        def fraction(key):
-                            return int(crop.get(key, '0')) / 100000 if crop is not None else 0
-                        visible_w = 1 - fraction('l') - fraction('r')
-                        visible_h = 1 - fraction('t') - fraction('b')
+                        if rel not in image_headers:
+                            image_headers[rel] = Image.from_file(io.BytesIO(d.part.related_parts[rel].blob))
+                        image = image_headers[rel]
+                        left, top, right, bottom = _crop_values(drawing)
+                        visible_w = 1 - (left + right) / 100000
+                        visible_h = 1 - (top + bottom) / 100000
                         if visible_w <= 0 or visible_h <= 0:
                             errors.append(f'段落{i}：图片裁图范围为空')
                         else:
@@ -100,20 +111,9 @@ def inspect_docx(path, height=None, source=None, input_format='json'):
             errors.append('图片数量与所指定输入的重复引用/省图关系不一致')
         actual_drawings = d._element.xpath('.//w:drawing')
         for index, (actual, wanted) in enumerate(zip(actual_drawings, expected_drawings), 1):
-            def crop_values(drawing):
-                found = drawing.xpath('.//a:srcRect')
-                return tuple(int(found[0].get(k, '0')) for k in ('l', 't', 'r', 'b')) if found else (0, 0, 0, 0)
-            if crop_values(actual) != crop_values(wanted):
+            if _crop_values(actual) != _crop_values(wanted):
                 errors.append(f'图{index}：裁图范围与制作输入不一致')
-            from docx.oxml.ns import qn
-            def selected_bytes(drawing, document):
-                blips = drawing.xpath('.//a:blip')
-                if not blips:
-                    return None
-                rel = blips[0].get(qn('r:embed'))
-                part = document.part.related_parts.get(rel)
-                return part.blob if part is not None else None
-            if selected_bytes(actual, d) != selected_bytes(wanted, expected):
+            if _selected_bytes(actual, d) != _selected_bytes(wanted, expected):
                 errors.append(f'图{index}：实际图片不是指定的选图文件')
             actual_reference = bool(actual.xpath('.//a:prstDash[@val="sysDot"]'))
             wanted_reference = bool(wanted.xpath('.//a:prstDash[@val="sysDot"]'))
@@ -131,19 +131,12 @@ def print_findings(result):
         print('\n'.join(result[key]) if result[key] else '无')
 
 
-def audit(path, height=None):
-    # Preserve the callable interface used by old scripts.
-    result = inspect_docx(path, height)
-    print_findings(result)
-    return result['transcriptions']
-
-
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('files', nargs='+', type=Path)
     ap.add_argument('--height', type=float)
     ap.add_argument('--source', type=Path, help='optional approved production input')
-    ap.add_argument('--input-format', choices=('markdown', 'json'), default='json')
+    ap.add_argument('--input-format', choices=('json',), default='json')
     args = ap.parse_args()
     if args.source and len(args.files) != 1:
         ap.error('--source只核对一个明确对应的文件')

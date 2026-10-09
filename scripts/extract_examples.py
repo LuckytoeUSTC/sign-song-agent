@@ -59,7 +59,7 @@ def records(path):
   pairs=[(a,b) for a,b in spans(text) if '/' in text[a:b]]
   if not pairs:continue
   # Multiple pairs retain the complete original paragraph: no invented lyric alignment.
-  first=pairs[0][0];cursor=0;lyric=[]
+  cursor=0;lyric=[]
   for a,b in pairs:lyric.append(text[cursor:a]);cursor=b
   lyric.append(text[cursor:]);original=' '.join(''.join(lyric).split()).strip(' /')
   if not original:continue

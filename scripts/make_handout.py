@@ -1,10 +1,11 @@
-"""One handout entry point: legacy Markdown or explicitly enabled content JSON."""
+"""One handout entry point: production JSON or a selected DOCX copy."""
 from pathlib import Path
 import argparse
 import copy
 import json
 import math
-import re
+from zipfile import ZipFile
+from lxml import etree
 
 from docx import Document
 from docx.image.image import Image
@@ -13,18 +14,14 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 
-# Re-export takeover APIs while keeping the existing single command entry.
-from handout_update import (TOOL_VERSION, UPDATE_BEGIN, UPDATE_END,
-                            compatibility_check, update_record_path,
-                            update_fingerprint, write_record, update_takeover)
+TOOL_VERSION = "3.1.1"
 DEFAULT_LAYOUT = dict(font_name='SimSun', font_size=11, title_size=16,
                       heading_size=13, image_height=.79, margin_horizontal=2,
                       margin_vertical=1.8, line_spacing=1.15)
-IMAGE_PATTERN = re.compile(r'!\[([^\]]*)\]\((.*?)\)')
 
 
 def text_runs(p, text, font_name='SimSun', font_size=11):
-    """Keep the legacy marker interpretation and run boundaries."""
+    """Render the transcription markers and run boundaries."""
     italic = strike = False
     index = 0
     while index < len(text):
@@ -60,16 +57,106 @@ def text_runs(p, text, font_name='SimSun', font_size=11):
         raise ValueError('未闭合的斜体或删除线标记：' + text)
 
 
+STYLE_FIELDS = {'font_name', 'font_size', 'space_before', 'space_after', 'line_spacing'}
+
+
+def validate_paragraph_style(options):
+    if not isinstance(options, dict) or set(options) - STYLE_FIELDS:
+        raise ValueError('段落格式只支持字体、字号、段前段后及行距')
+    for key, value in options.items():
+        if key == 'font_name':
+            if not isinstance(value, str) or not value.strip():
+                raise ValueError('字体须为非空文字')
+        elif type(value) not in (int, float) or not math.isfinite(value) or (
+                value < 0 if key.startswith('space_') else value <= 0):
+            raise ValueError('无效段落格式：' + key)
+
+
+def apply_paragraph_style(p, options):
+    for key in ('space_before', 'space_after', 'line_spacing'):
+        if key in options:
+            setattr(p.paragraph_format, key,
+                    options[key] if key == 'line_spacing' else Pt(options[key]))
+    for run in p.runs:
+        if 'font_name' in options and run.text != '~':
+            run.font.name = options['font_name']
+            run._element.get_or_add_rPr().rFonts.set(qn('w:eastAsia'), options['font_name'])
+        if 'font_size' in options:
+            run.font.size = Pt(options['font_size'])
+
+
+def pad_reference_row(p, padding):
+    """Reserve vertical room only for a selected row containing dotted pictures."""
+    from docx.enum.text import WD_LINE_SPACING
+    heights = p._p.xpath('.//wp:inline/wp:extent/@cy')
+    lines = p._p.xpath('.//pic:spPr/a:ln[a:prstDash]')
+    if not heights or not lines:
+        return
+    required = max(int(h) for h in heights) / 12700 + padding
+    current = p.paragraph_format.line_spacing
+    if isinstance(current, int):
+        required = max(required, current / 12700)
+    p.paragraph_format.line_spacing_rule = WD_LINE_SPACING.AT_LEAST
+    p.paragraph_format.line_spacing = Pt(required)
+    for line in lines:
+        line.set('algn', 'in')
+
+
+def copy_reference(source, output, supplied):
+    """Patch only document.xml; all media, styles, headers and other parts stay intact."""
+    document = Document(source)
+    forbidden = set(supplied) - {'paragraph_overrides', 'reference_frame_rows',
+                                'reference_frame_padding_pt', 'content_styles'}
+    if forbidden:
+        raise ValueError('docx副本只接受逐段覆盖和指定参考图行；全局参数用于新稿')
+    if supplied.get('content_styles'):
+        raise ValueError('docx副本请用paragraph_overrides明确选择段落，不推测角色')
+    overrides = supplied.get('paragraph_overrides', {})
+    rows = supplied.get('reference_frame_rows', [])
+    for number in list(overrides) + rows:
+        if int(number) > len(document.paragraphs):
+            raise ValueError('段落序号超出原件：' + str(number))
+    for number, options in overrides.items():
+        apply_paragraph_style(document.paragraphs[int(number)-1], options)
+    for number in rows:
+        pad_reference_row(document.paragraphs[number-1], supplied.get('reference_frame_padding_pt', 6))
+    with ZipFile(source) as original, ZipFile(output, 'w') as result:
+        for info in original.infolist():
+            data = original.read(info.filename)
+            if info.filename == 'word/document.xml' and (overrides or rows):
+                data = etree.tostring(document._element, xml_declaration=True,
+                                      encoding='UTF-8', standalone=True)
+            result.writestr(info, data)
+
+
 def read_layout(path=None, height=None):
     settings = DEFAULT_LAYOUT.copy()
     settings['reference_frame_padding'] = False
+    settings.update(content_styles={}, paragraph_overrides={}, reference_frame_rows=[],
+                    reference_frame_padding_pt=6)
     if path:
         supplied = json.loads(Path(path).read_text(encoding='utf-8'))
-        unknown = set(supplied) - set(settings)
+        unknown = set(supplied) - set(settings) - {'image_space_before', 'image_space_after', 'image_line_spacing'}
         if unknown:
             raise ValueError('未知版式参数：' + ', '.join(sorted(unknown)))
         settings.update(supplied)
     for key, value in settings.items():
+        if key in ('content_styles', 'paragraph_overrides'):
+            if not isinstance(value, dict):
+                raise ValueError(key + '须为对象')
+            for name, options in value.items():
+                if key == 'paragraph_overrides' and (not str(name).isdigit() or int(name) < 1):
+                    raise ValueError('段落序号从1开始')
+                validate_paragraph_style(options)
+            continue
+        if key == 'reference_frame_rows':
+            if not isinstance(value, list) or any(type(n) is not int or n < 1 for n in value):
+                raise ValueError('reference_frame_rows须为从1开始的段落序号数组')
+            continue
+        if key in ('image_space_before', 'image_space_after', 'reference_frame_padding_pt'):
+            if type(value) not in (int, float) or not math.isfinite(value) or value < 0:
+                raise ValueError(key + '须为非负有限数')
+            continue
         if key == 'reference_frame_padding':
             if not isinstance(value, bool):
                 raise ValueError('reference_frame_padding须为true或false')
@@ -83,35 +170,12 @@ def read_layout(path=None, height=None):
     return settings
 
 
-def read_content(source, input_format='markdown'):
-    """Read data only; JSON is opt-in and never inferred from a filename."""
+def read_content(source, input_format='json'):
+    """Read the current production JSON schema."""
     source = Path(source).resolve()
     text = source.read_text(encoding='utf-8')
-    if input_format == 'markdown':
-        lines = text.splitlines()
-        blocks = []
-        for i, line in enumerate(lines):
-            if not line.strip():
-                continue
-            heading = re.match(r'^#{1,3} ', line)
-            if heading:
-                level = len(line) - len(line.lstrip('#'))
-                blocks.append(dict(heading=line[level + 1:], level=level))
-                continue
-            tokens = []
-            cursor = 0
-            for match in IMAGE_PATTERN.finditer(line):
-                tokens.append(dict(text=line[cursor:match.start()]))
-                spec = match[2].strip()
-                reference = spec.endswith('"参考"')
-                if reference:
-                    spec = spec[:-len('"参考"')].strip()
-                tokens.append(dict(path=spec.strip('<>'), alt=match[1], reference=reference))
-                tokens.append(dict(text=' ', raw=True))
-                cursor = match.end()
-            tokens.append(dict(text=line[cursor:]))
-            blocks.append(dict(tokens=tokens, keep_with_next=i + 1 < len(lines) and '![' in lines[i + 1]))
-        return dict(input_format='markdown', base=source.parent, blocks=blocks)
+    if input_format != 'json':
+        raise ValueError('完整版制作输入仅支持JSON；既有Word请使用docx副本模式')
     data = json.loads(text)
     if not isinstance(data, dict) or data.get('version') != 1 or not isinstance(data.get('blocks'), list):
         raise ValueError('制作JSON须含version: 1和blocks数组')
@@ -166,12 +230,7 @@ def check_image(item, base):
 
 def check_content(content):
     for block in content['blocks']:
-        if content['input_format'] == 'markdown':
-            for token in block.get('tokens', []):
-                if 'path' in token:
-                    check_image(token, content['base'])
-            continue
-        for key in ('lyrics', 'transcription', 'text', 'heading', 'note', 'record'):
+        for key in ('lyrics', 'transcription', 'text', 'heading', 'note', 'record', 'role'):
             if key in block and not isinstance(block[key], str):
                 raise ValueError(key + '须为文字')
         if 'heading' in block and any(k in block for k in ('lyrics', 'transcription', 'text', 'images', 'note')):
@@ -234,10 +293,12 @@ def add_paragraph(document, settings, images=False, keep_with_next=False):
         p.paragraph_format.keep_with_next = True
     if images:
         p.paragraph_format.space_before = Pt(4)
-        if settings.get('reference_frame_padding', False):
-            from docx.enum.text import WD_LINE_SPACING
-            p.paragraph_format.line_spacing_rule = WD_LINE_SPACING.AT_LEAST
-            p.paragraph_format.line_spacing = Pt(settings['image_height'] * 72 + 6)
+        if 'image_space_before' in settings:
+            p.paragraph_format.space_before = Pt(settings['image_space_before'])
+        if 'image_space_after' in settings:
+            p.paragraph_format.space_after = Pt(settings['image_space_after'])
+        if 'image_line_spacing' in settings:
+            p.paragraph_format.line_spacing = settings['image_line_spacing']
     return p
 
 
@@ -287,43 +348,62 @@ def render_content(content, settings):
         if 'heading' in block:
             add_heading(document, block, settings)
             continue
-        if content['input_format'] == 'markdown':
-            tokens = block['tokens']
-            p = add_paragraph(document, settings, any('path' in t for t in tokens), block['keep_with_next'])
-            for token in tokens:
-                if 'path' in token:
-                    add_picture(p, token, content['base'], settings)
-                elif token.get('raw'):
-                    p.add_run(token['text'])
-                else:
-                    write(p, token['text'])
-            if '![' in p.text:
-                raise ValueError('图片Markdown未识别：' + p.text)
-            continue
         images = block.get('images', [])
         text = block.get('text', block.get('lyrics', ''))
         if 'transcription' in block:
             text += '（' + block['transcription'] + '）'
         p = add_paragraph(document, settings, keep_with_next=bool(images))
-        write(p, text)
+        roles = settings.get('content_styles', {})
+        if 'transcription' in block and any(k in roles for k in ('lyrics', 'transcription')):
+            options = roles.get('lyrics', {})
+            text_runs(p, block.get('lyrics', ''), options.get('font_name', settings['font_name']),
+                      options.get('font_size', settings['font_size']))
+            options = roles.get('transcription', {})
+            text_runs(p, '（' + block['transcription'] + '）',
+                      options.get('font_name', settings['font_name']),
+                      options.get('font_size', settings['font_size']))
+        else:
+            write(p, text)
+        options = roles.get(block.get('role', 'body'), {})
+        if 'transcription' in block and any(k in roles for k in ('lyrics', 'transcription')):
+            options = {k: v for k, v in options.items() if k not in ('font_name', 'font_size')}
+        apply_paragraph_style(p, options)
         if images:
             picture_row = add_paragraph(document, settings, images=True)
             for item in images:
                 add_picture(picture_row, item, content['base'], settings)
                 if item.get('note'):
+                    start = len(picture_row.runs)
                     write(picture_row, '〔' + item['note'] + '〕')
+                    options = settings.get('content_styles', {}).get('note', {})
+                    for run in picture_row.runs[start:]:
+                        if 'font_name' in options:
+                            run.font.name = options['font_name']
+                            run._element.get_or_add_rPr().rFonts.set(qn('w:eastAsia'), options['font_name'])
+                        if 'font_size' in options:
+                            run.font.size = Pt(options['font_size'])
                 write(picture_row, ' ')
+            if settings.get('reference_frame_padding'):
+                pad_reference_row(picture_row, settings['reference_frame_padding_pt'])
         if block.get('note'):
             note_row = add_paragraph(document, settings)
             write(note_row, block['note'])
+            apply_paragraph_style(note_row, settings.get('content_styles', {}).get('note', {}))
     return document
 
 
-def make_handout(source, output, height=None, layout=None, input_format='markdown'):
+def make_handout(source, output, height=None, layout=None, input_format='json'):
     output = Path(output)
     if output.exists():
         raise ValueError('输出文件已存在；请选择新文件名')
     settings = read_layout(layout, height)
+    if input_format == 'docx':
+        if height is not None:
+            raise ValueError('docx副本保留原图尺寸，不接受--height')
+        supplied = json.loads(Path(layout).read_text(encoding='utf-8')) if layout else {}
+        output.parent.mkdir(parents=True, exist_ok=True)
+        copy_reference(source, output, supplied)
+        return output
     content = check_content(read_content(source, input_format))
     document = render_content(content, settings)
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -338,19 +418,12 @@ def main():
     ap.add_argument('--out', type=Path)
     ap.add_argument('--height', type=float)
     ap.add_argument('--layout', type=Path, help='JSON layout settings')
-    ap.add_argument('--input-format', choices=('markdown', 'json'), default='markdown')
-    ap.add_argument('--update-action', choices=('check', 'complete', 'fail'))
-    ap.add_argument('--update-note', default='')
+    ap.add_argument('--input-format', choices=('json', 'docx'), default='json')
     args = ap.parse_args()
-    if args.update_action:
-        if args.source or args.out or args.layout or args.height is not None or args.input_format != 'markdown':
-            ap.error('更新接管动作不能与讲义制作参数混用')
-        print(json.dumps(update_takeover(args.update_action, note=args.update_note), ensure_ascii=False, indent=2))
-    else:
-        if not args.source or not args.out:
-            ap.error('制作需要source与--out')
-        make_handout(args.source, args.out, args.height, args.layout, args.input_format)
-        print('生成', args.out, '；请逐页预览后使用。')
+    if not args.source or not args.out:
+        ap.error('制作需要source与--out')
+    make_handout(args.source, args.out, args.height, args.layout, args.input_format)
+    print('生成', args.out, '；请逐页预览后使用。')
 
 
 if __name__ == '__main__':

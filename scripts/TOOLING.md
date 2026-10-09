@@ -6,7 +6,7 @@
 
 新歌先按AGENTS.md完整阅读参照讲义与小班原件，再检索数据库。`read_document.py`读取完整文本、Word格式和批注；它不能显示图示与完整版面，必须同时查看原件页面。查词使用`mdict_reader.py query`，整词失败后按AGENTS.md拆分对象、动作和关系，继续别名与近义词检索。查询现在自动展开别名指向，循环和断链会明确报告；原始记录与图片地址可用于本曲查询依据，不替代语义判断。
 
-内置指拼沿用同一工具：`python scripts/mdict_reader.py query dictionaries/指拼 "X H" --summary`；`python scripts/mdict_reader.py images dictionaries/指拼 dictionaries/指拼 "M C T Z" "工作台/歌题/指拼原图"`。本地资源无MDD，第二个路径仍填指拼目录，便于沿用现有命令结构。`ZH`、`CH`、`SH`、`NG`是单个原图条目，首字母序列必须用空格分开；字母顺序及重复保留。将输出图片路径插入已确认的Markdown，交给`make_handout.py`按正常图片流程制作。程序不根据汉字擅自决定名字读音。
+内置指拼沿用同一工具：`python scripts/mdict_reader.py query dictionaries/指拼 "X H" --summary`；`python scripts/mdict_reader.py images dictionaries/指拼 dictionaries/指拼 "M C T Z" "工作台/歌题/指拼原图"`。本地资源无MDD，第二个路径仍填指拼目录，便于沿用现有命令结构。`ZH`、`CH`、`SH`、`NG`是单个原图条目，首字母序列必须用空格分开；字母顺序及重复保留。将输出图片路径写入已确认的制作JSON，交给`make_handout.py`按正常图片流程制作。程序不根据汉字擅自决定名字读音。
 
 `scripts/requirements.txt`记录工具所需的Python库：python-docx用于Word，pdfplumber用于PDF。由智能体先查找客户端自带或系统已有的兼容Python，环境已有这些库时无需重复安装。缺少依赖时由智能体在项目根目录自动执行`python -m pip install -r scripts/requirements.txt`；缺少Python时优先自动配置运行时。脚本失败后先由模型诊断并调整方案，确实无法完成才请老师执行最少的手动步骤。查MDX和检索Markdown的脚本不依赖这两个库。依赖清单不属于教学资料，无需手语老师手动维护。
 
@@ -37,11 +37,11 @@ python scripts/mdict_reader.py images dictionaries/国家通用手语词典/国�
 
 `read_document.py`按Word正文段落、表格及批注，或PDF页码输出可检索文本；原文有删除线或斜体时保留标记。默认只输出，不另建资料副本；PDF的格式与图片仍需看原页。
 
-新图解可将已确认内容写成一份Markdown，`# 歌题`、普通歌词转写行、下一行的`![词](图片路径)`依次排版。`*文字*`生成斜体，`~~文字~~`生成删除线，单个`~`原样保留，`++`为正体；图片标题`"参考"`表示原生1pt点线框，例：`![桥](候选图/桥.jpg "参考")`。这些是工具支持的格式，具体含义和使用方式按本次讲义格式要求确定。每个词选哪幅图由老师或助手先确定。
+新图解统一将已确认内容写成version: 1的制作JSON，结构与示例见下文。转写字符串中的`*文字*`生成斜体，`~~文字~~`生成删除线，单个`~`原样保留，`++`为正体；这些标记仍是当前转写格式的一部分。图片放入images数组，每个词选哪幅图由老师或助手先确定。
 
 ```powershell
-python scripts/make_handout.py '<工作台/歌题/内容.md>' --out '<工作台/歌题/讲义.docx>' --height 0.79
-python scripts/audit_docx.py '<工作台/歌题/讲义.docx>' --height 0.79
+python scripts/make_handout.py '<工作台/歌题/内容.json>' --out '<工作台/歌题/讲义.docx>' --height 0.79
+python scripts/audit_docx.py '<工作台/歌题/讲义.docx>' --source '<工作台/歌题/内容.json>'
 ```
 
 图解工具生成新文档，不覆盖已有文件，不修改原讲义。需要精细沿用既有讲义时用局部Word编辑，而不是重建。`audit_docx.py`检查两版转写、斜体++、字体字号分布、嵌入/浮动图、固定行距、图片是否超宽；指定图高时才核对高度，文化照片等例外人工判断。
@@ -77,13 +77,11 @@ python scripts/audit_docx.py '<工作台/歌题/讲义.docx>' --height 0.79
 
 例句与辨析案例按关键词出现次数分别排序、交替展示，避免一种结果占满；这只是文本匹配排序，智能体仍须判断实际适用性。规则反查与索引共用关联逻辑，包括条目标注和规则正文提及。
 
-制作前按选定参照填写本曲版式JSON，再传入 `make_handout.py --layout <版式.json>`。可配置：`font_name`（字体）、`font_size`（正文字号）、`title_size`（标题字号）、`heading_size`（小标题字号）、`image_height`（英寸）、`margin_horizontal`与`margin_vertical`（厘米）、`line_spacing`（正文行距倍数）。例如：`{"font_name":"SimSun","font_size":12,"image_height":0.79,"margin_horizontal":2}`。未填项使用默认值；`--height`可覆盖图高。支持一级至三级Markdown标题。段落样式、复杂表格等需要精确沿用时，直接局部编辑原Word，不为每首歌复制一套生成脚本。
+制作前按选定参照填写本曲版式JSON，再传入 `make_handout.py --layout <版式.json>`。可配置：`font_name`（字体）、`font_size`（正文字号）、`title_size`（标题字号）、`heading_size`（小标题字号）、`image_height`（英寸）、`margin_horizontal`与`margin_vertical`（厘米）、`line_spacing`（正文行距倍数）。例如：`{"font_name":"SimSun","font_size":12,"image_height":0.79,"margin_horizontal":2}`。未填项使用默认值；`--height`可覆盖图高。制作JSON标题level支持1至3级。段落样式、复杂表格等需要精确沿用时，直接局部编辑原Word，不为每首歌复制一套生成脚本。
 
-## 制作输入可选扩展 3.1.1
+## 当前制作输入 3.1.1
 
-旧Markdown命令、标记、图片语法、--height、--layout与全部原版式字段不变，默认仍按Markdown读取与原样排版。试排与正式稿共用make_handout.py；文本读取、数据检查、add_picture等排版函数可复用，但不要另写一套Word生成器。
-
-只有显式加`--input-format json`才读取制作JSON。顶层`version: 1`、`blocks`数组；标题块使用`heading`和可选`level`（1—3）；正文使用`text`，或`lyrics`与`transcription`。每块可有唯一`id`。图片`images`数组的`path`相对制作JSON所在目录，直接指向老师已有截图或裁图；程序不追查词典、替换图或改写图片。`entry`、`sense`、`source`是内部追溯信息，`action`记录实际采用的动作部分，`alt`是无障碍替代文本，均不自动印成标签。图旁`note`是已确认的必要短说明，排在对应图示后；`record`只保留长解释，永不打印。不要把长记录填入note，或把数据中的候选冒充老师确认。
+完整版默认读取制作JSON，亦可显式加`--input-format json`。试排与正式稿共用make_handout.py；不要另写一套Word生成器。顶层`version: 1`、`blocks`数组；标题块使用`heading`和可选`level`（1—3）；正文使用`text`，或`lyrics`与`transcription`。每块可有唯一`id`。图片`images`数组的`path`相对制作JSON所在目录，直接指向老师已有截图或裁图；程序不追查词典、替换图或改写图片。`entry`、`sense`、`source`是内部追溯信息，`action`记录实际采用的动作部分，`alt`是无障碍替代文本，均不自动印成标签。图旁`note`是已确认的必要短说明，排在对应图示后；`record`只保留长解释，永不打印。不要把长记录填入note，或把数据中的候选冒充老师确认。
 
 ```json
 {"version":1,"blocks":[
@@ -105,14 +103,16 @@ python scripts/audit_docx.py '<新稿.docx>' --source '<内容.json>'
 python scripts/audit_docx.py '<旧稿.docx>'
 ```
 
-检查入口旧调用与audit(path,height)返回值保留。错误报告已确认的结构或指定输入不一致，警告报告可能的版式问题，人工核对列出机器不能确认的动作与页面问题；旧项目无新数据字段仍可检查，不要求补字段。只有明确传--source才按指定制作输入核对正文、短注释、图片数和裁图；旧Markdown用--input-format markdown。所有检查只读，不自动修改Word、PDF或歌曲。图片统计只输出到内部检查。
+检查入口使用inspect_docx与audit_docx.py命令。错误报告结构或指定输入不一致，警告报告可能的版式问题，人工核对列出机器不能确认的动作与页面问题。不传--source时可只读检查任意既有Word，不要求补制作数据；传--source时只接受当前制作JSON，核对正文、短注释、图片数、裁图与选图。检查不自动修改文件。
 
-## 覆盖更新接管工具 3.1.1
+完整版不提供--update-action、本机接管状态记录和旧Markdown读取；已有项目请使用对应局部更新包，它保留旧格式兼容与接管检查。
 
-更新说明见根目录AGENTS.md标记区块。`make_handout.py --update-action check`不写教学资料，以临时合成稿核对兼容，读取本机记录；`--update-action fail --update-note "已完成；未完成及原因"`保存未完成状态；`--update-action complete --update-note "实际调整与验证结果"`由智能体在全部接管验证成功后调用。complete再次检查兼容，保存本机记录及清理前AGENTS备份，且仅清理本版本区块；本机结果不会随更新包分发。失败保留说明，修复后可重试；重新覆盖带回同版说明也会核对文件指纹。
+参考图虚线框留边可在版式JSON中设置reference_frame_padding:true；只给包含参考图框的图片行增加至少“图高＋6磅”的行高并内收图框，普通图片行不变，不改原图像素或图高比例。默认false；可能影响分页，须逐页核对。
 
-这不是安装器，也不自动推断任务阶段或下载词典。接管智能体负责先核对任务、已确认选择及所需环境，必要配置修改先备份；完成机器兼容检查、任务与必要环境核对后才调用complete；若本机进行试排，记录实际页面检查结果，缺渲染器不得虚报。制作交付仍必须逐页检查。交付源码与更新包不得提前清理区块。测试仅在`python -m unittest discover -s scripts/tests -v`下用临时合成数据运行，不触碰歌曲工作台。
+## 按内容配置格式与原件对照副本
 
-参考图虚线框留边：旧Markdown默认保持原排版；遇到上边截断，可在本曲版式JSON中明确加`"reference_frame_padding": true`。该选项把图片行设置为至少“图高＋6磅”的行高并内收图框，不改图高、比例或原图像素；它可能影响分页，须按完整页面试排确认。默认false，不会在覆盖更新时自动修改旧版式文件。新旧内容输入均可选择启用。
+以下版式字段按本次要求选用，未指定项使用默认值。image_space_before、image_space_after以磅设置图片段前段后，允许0；image_line_spacing为图片行距倍数。content_styles按角色设置font_name、font_size、space_before、space_after、line_spacing；JSON正文块role指定角色，未指定用body，短注释用note。未提供的字段保留已有默认值。例如content_styles中的intro设置楷体，body设置宋体，note设置9磅；不要按歌曲名写代码分支。图旁note仅应用字体字号，不能给同一行的不同run设置不同段间距。
 
-制作代码职责：make_handout.py负责制作输入与可复用Word排版，audit_docx.py负责只读检查，handout_update.py仅封装本机接管状态与兼容检查，无独立命令入口。后续先复用现有函数；新增选项须显式启用，不能复制生成器或硬编码具体歌曲。更新模块也纳入版本指纹，模块变更会要求重新检查。
+精细沿用已有Word，显式使用make_handout.py 原件.docx --input-format docx --out 新副本.docx --layout 调整.json。副本模式保留全部原图、尺寸、裁剪、间隔、页面宽度、样式和页眉页脚，只修改word/document.xml中明确指定的段落。paragraph_overrides以从1开始的正文段落序号为键，使用上述五个格式字段；段落序号与原件绑定，原件结构变化后先重新核对。不能给此模式传全局图高、边距或字体，也不推测段落角色；没有覆盖项即原样复制。
+
+reference_frame_rows指定确实需要修正的参考图段落序号；reference_frame_padding_pt控制额外行高（磅，最小可用留边须逐页验证）。只处理指定行中已有虚线图框，保留图片宽高及横向间隔。新稿reference_frame_padding:true也只增加含参考图框行的行高，普通图行保持原有间距。未指定额外留边时沿用6磅，可明确减小。不要把某一份参照的段落序号或字体要求写入通用默认值。

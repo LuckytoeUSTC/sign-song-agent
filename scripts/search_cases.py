@@ -33,9 +33,6 @@ def read_sheets(path):
    result[s.get('name')]=records
  return result
 
-def linked(text,rule):
- return rule in re.split(r'[,，\s]+',text.strip())
-
 def main():
  ap=argparse.ArgumentParser(description=__doc__)
  ap.add_argument('keyword',nargs='?',default='');ap.add_argument('--rule',default='');ap.add_argument('--source',default='');ap.add_argument('--limit',type=int,default=8);ap.add_argument('--context',action='store_true',help='Print the complete dialogue');ap.add_argument('--detail',action='store_true',help='Read the complete matching revision case')
