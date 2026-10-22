@@ -32,7 +32,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y xvfb libegl1 libopengl0 libxcb-cursor0 libxcb-xinerama0 libxkbcommon-x11-0 libnss3 libasound2 libxcomposite1 libxdamage1 libxrandr2 libxcb-shape0 libxcb-keysyms1 libxcb-icccm4 libpulse0
-          python -m pip install "pywebview[pyside6]==6.2.1"
+          python -m pip install "pywebview[pyside6]==6.2.1" "PySide6==6.8.3"
       - name: Build and test Windows or macOS packages
         if: runner.os != 'Linux'
         run: python scripts/release/build_packages.py
