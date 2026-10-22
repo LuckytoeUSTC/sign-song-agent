@@ -123,3 +123,5 @@ reference_frame_rows指定确实需要修正的参考图段落序号；reference
 源码仓库中的scripts/release/build_packages.py用于构建完整版与NO-AI-ZONE，构建工具不随用户发行包提供；在对应系统中构建并执行合成检查和窗口测试；构建记录、临时目录和附件保存在源码目录之外。GitHub Actions的platform-packages流程负责Windows x64、macOS arm64和Linux x64的原生构建，只生成待核查附件，不自动发布。
 
 只有NO-AI-ZONE附独立程序和Python运行环境；完整版保留原目录、Python入口及依赖配置方式。独立查询程序随包提供Python。Windows使用WebView2，macOS使用系统WebKit，Linux随包提供Qt/PySide6。源码直接运行时，Windows/macOS安装desktop-requirements；Linux另需pywebview[pyside6]及可用的桌面图形库。各系统打开原件分别使用系统默认应用；程序检查与构建机窗口测试不能替代真实用户环境验证。
+
+发布源码型完整版可用python scripts/release/build_packages.py --full-only；按当前跟踪文件重新打包三种系统后缀，不构建或加入NO-AI原生程序。完整版内容保持相同，系统后缀用于下载引导；运行依赖由各系统中的智能体配置。

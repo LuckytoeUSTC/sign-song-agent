@@ -29,6 +29,47 @@ def run(args, **kwargs):
     subprocess.run([str(x) for x in args], check=True, **kwargs)
 
 
+
+def build_full(suffix):
+    """Source-based full distribution; never bundle NO-AI runtime or assets."""
+    full = BUILD / ('source-' + suffix) / '手语歌智能工坊'
+    full.mkdir(parents=True, exist_ok=True)
+    tracked = subprocess.check_output(['git', '-c', 'safe.directory=' + SRC.as_posix(), '-C', str(SRC), 'ls-files', '-z']).decode().split('\0')
+    for name in tracked:
+        if not name or name.startswith(('scripts/release/', '.github/')):
+            continue
+        src = SRC / name
+        if not src.is_file() or src.name == 'debug.log':
+            continue
+        dst = full / name
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, dst)
+    assert (full / '资料/规则与例句查询程序.pyw').is_file()
+    assert not any((full / n).exists() for n in ['规则与例句查询.exe', '规则与例句查询.app', '规则与例句查询', '本系统使用说明.txt', '许可说明.txt', 'STOP-AI.jpg', 'STOP-USING-AI.jpg'])
+    for path in sorted((x for x in full.rglob('*') if x.is_dir()), key=lambda p: len(p.parts), reverse=True):
+        if not any(path.iterdir()):
+            path.rmdir()
+    name = 'sign-song-agent-v3.1.1-full-' + suffix
+    if suffix.startswith('linux'):
+        archive = OUTPUT / (name + '.tar.gz')
+        with tarfile.open(archive, 'w:gz') as tar:
+            tar.add(full, arcname=full.name)
+    else:
+        archive = OUTPUT / (name + '.zip')
+        with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED, compresslevel=6) as z:
+            for path in full.rglob('*'):
+                if path.is_file():
+                    z.write(path, path.relative_to(full.parent))
+    (OUTPUT / (archive.name + '.sha256')).write_text(hashlib.sha256(archive.read_bytes()).hexdigest() + '  ' + archive.name + '\n', encoding='ascii')
+    print('Full source package ready:', suffix)
+
+
+if '--full-only' in sys.argv:
+    for suffix in ['windows-x64', 'macos-arm64', 'linux-x64']:
+        build_full(suffix)
+    sys.exit(0)
+
+
 env = os.environ.copy()
 env.update(NO_AI_OUTPUT=str(QUERY), NO_AI_BUILD=str(STAGE))
 run([sys.executable, SRC / 'scripts/release/prepare_query_data.py'], env=env)
@@ -47,24 +88,13 @@ for backend in exclude:
 cmd.append(SRC / 'scripts/release/portable_query.py')
 run(cmd)
 
-tracked = subprocess.check_output(['git', '-c', 'safe.directory=' + SRC.as_posix(), '-C', str(SRC), 'ls-files', '-z']).decode().split('\0')
-for name in tracked:
-    if not name or name.startswith(('scripts/release/', '.github/')):
-        continue
-    src = SRC / name
-    if not src.is_file() or src.name == 'debug.log':
-        continue
-    dst = FULL / name
-    dst.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(src, dst)
-
 if SYSTEM == 'macos':
     binary = STAGE / 'dist/Query.app'
     appname = '规则与例句查询.app'
 else:
     binary = STAGE / 'dist' / ('Query.exe' if SYSTEM == 'windows' else 'Query')
     appname = '规则与例句查询.exe' if SYSTEM == 'windows' else '规则与例句查询'
-for folder in [QUERY, FULL]:
+for folder in [QUERY]:
     folder.mkdir(parents=True, exist_ok=True)
     if binary.is_dir():
         shutil.copytree(binary, folder / appname, dirs_exist_ok=True, symlinks=True)
@@ -106,7 +136,6 @@ Windows电脑选`windows-x64`；M系列Mac选`macos-arm64`；Linux x64电脑选`
 讲义及学习材料沿用原授权范围，扩大分发前请确认制作者允许的用途。程序与运行组件许可见“许可说明.txt”。反馈：liqiding@mail.ustc.edu.cn
 '''
 (QUERY / 'README.md').write_text(readme, encoding='utf-8')
-(FULL / '本系统使用说明.txt').write_text(f'手语歌智能工坊 v3.1.1 · {SUFFIX}\n\n{requirements}\n\n查询程序：{launch}，此功能无需安装Python。完整备课请在本目录接入智能体，先阅读README.md和AGENTS.md，由智能体准备Python及制作所需依赖。\n\n这个完整包用于新项目。已有项目先核对覆盖更新说明，保留自己的工作台和资料。\n', encoding='utf-8-sig')
 
 license_text = [(SRC / 'LICENSE').read_text(encoding='utf-8')]
 for package in ['pywebview', 'pythonnet', 'clr_loader', 'cffi', 'pycparser', 'bottle', 'proxy_tools', 'typing_extensions', 'setuptools', 'packaging', 'markdown', 'PySide6', 'PySide6_Essentials', 'PySide6_Addons', 'shiboken6', 'pyobjc-core', 'pyobjc-framework-Cocoa', 'pyobjc-framework-WebKit']:
@@ -123,11 +152,11 @@ for file in [Path(sys.base_prefix) / 'LICENSE.txt', Path(sys.base_prefix) / 'LIC
     if file.is_file():
         license_text.append('\n\n=== Python ===\n' + file.read_text(encoding='utf-8', errors='replace'))
         break
-for folder in [QUERY, FULL]:
+for folder in [QUERY]:
     (folder / '许可说明.txt').write_text('\n'.join(license_text), encoding='utf-8')
 
 # Validate frozen binaries after relocating their resources into final package roots.
-for folder, label in [(QUERY, 'query'), (FULL, 'full')]:
+for folder, label in [(QUERY, 'query')]:
     exe = folder / appname
     if SYSTEM == 'macos':
         exe = exe / 'Contents/MacOS/Query'
@@ -140,7 +169,7 @@ for folder, label in [(QUERY, 'query'), (FULL, 'full')]:
     if not result.get('ok'):
         raise RuntimeError(result)
 
-for folder, name in [(QUERY, 'no-ai-zone-v3.1.1-' + SUFFIX), (FULL, 'sign-song-agent-v3.1.1-full-' + SUFFIX)]:
+for folder, name in [(QUERY, 'no-ai-zone-v3.1.1-' + SUFFIX)]:
     for path in sorted((x for x in folder.rglob('*') if x.is_dir()), key=lambda p: len(p.parts), reverse=True):
         if not any(path.iterdir()):
             path.rmdir()
@@ -158,6 +187,7 @@ for folder, name in [(QUERY, 'no-ai-zone-v3.1.1-' + SUFFIX), (FULL, 'sign-song-a
                 if path.is_file():
                     z.write(path, path.relative_to(folder.parent))
     (OUTPUT / (archive.name + '.sha256')).write_text(hashlib.sha256(archive.read_bytes()).hexdigest() + '  ' + archive.name + '\n', encoding='ascii')
-for name in ['query-check.json', 'query-smoke.json', 'full-check.json', 'full-smoke.json']:
+for name in ['query-check.json', 'query-smoke.json']:
     shutil.copy2(STAGE / name, OUTPUT / (SUFFIX + '-' + name))
+build_full(SUFFIX)
 print('Packages ready:', SUFFIX)
