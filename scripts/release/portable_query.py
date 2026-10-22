@@ -129,7 +129,9 @@ def main():
         return
     import webview
     api = FileApi(html)
-    window = webview.create_window(('手语歌智能工坊 · 规则与例句查询' if (ROOT / 'AGENTS.md').exists() else 'NO-AI-ZONE · 规则与例句查询'), html=html, js_api=api,
+    # Qt setHtml has a 2 MB encoded-data limit; load the bundled local file instead.
+    page_content = {'url': PAGE.as_uri()} if sys.platform.startswith('linux') else {'html': html}
+    window = webview.create_window(('手语歌智能工坊 · 规则与例句查询' if (ROOT / 'AGENTS.md').exists() else 'NO-AI-ZONE · 规则与例句查询'), **page_content, js_api=api,
                                   width=1120, height=800, min_size=(640, 480), text_select=True,
                                   background_color='#F5F6F3')
     if len(sys.argv) > 2 and sys.argv[1] == '--smoke':

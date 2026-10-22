@@ -45,7 +45,8 @@ def main():
         from build_query_page import build
         build()
     html = PAGE.read_text(encoding='utf-8')
-    webview.create_window('规则与例句查询', html=html, js_api=FileApi(html),
+    page_content = {'url': PAGE.as_uri()} if sys.platform.startswith('linux') else {'html': html}
+    webview.create_window('规则与例句查询', **page_content, js_api=FileApi(html),
                           width=1120, height=800, min_size=(640, 480), text_select=True,
                           background_color='#F5F6F3')
     storage = Path(os.environ.get('LOCALAPPDATA', str(Path.home() / '.cache'))) / 'SignSongAgent' / 'WebView2'
