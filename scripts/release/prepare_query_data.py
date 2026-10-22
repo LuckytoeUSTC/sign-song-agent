@@ -96,7 +96,7 @@ for p in sorted(selected):
                 return 'href="' + html.escape(href, quote=True) + '" data-source="' + html.escape(href, quote=True) + '"'
             return m.group()
         body = re.sub(r'href="([^"]*)"', anchor, body)
-        csp = "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data: file:"
+        csp = "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline' 'unsafe-eval'; img-src data: file:"
         dst.write_text(f'<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="{csp}"><title>{html.escape(p.stem)}</title><style>{css}</style><body>{body}<script>{script}</script></body></html>', encoding='utf-8')
     manifest.append({'source': str(p.relative_to(SRC)), 'file': str(dst.relative_to(OUT)), 'sha256': hashlib.sha256(dst.read_bytes()).hexdigest()})
 
