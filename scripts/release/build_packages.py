@@ -49,7 +49,7 @@ run(cmd)
 
 tracked = subprocess.check_output(['git', '-C', str(SRC), 'ls-files', '-z']).decode().split('\0')
 for name in tracked:
-    if not name or name.startswith(('scripts/release/', '.github/', '工作台/')):
+    if not name or name.startswith(('scripts/release/', '.github/')):
         continue
     src = SRC / name
     if not src.is_file() or src.name == 'debug.log':
