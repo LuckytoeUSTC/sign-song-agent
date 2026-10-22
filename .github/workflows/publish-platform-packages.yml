@@ -10,6 +10,13 @@ jobs:
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Verify unchanged full-project tools
+        run: |
+          python -m pip install python-docx pillow
+          python -m unittest discover -s scripts/tests -q
       - uses: actions/download-artifact@v4
         with:
           name: packages-windows-x64
@@ -28,20 +35,26 @@ jobs:
           path: verified/linux-x64
           run-id: 39813709610
           github-token: ${{ github.token }}
-      - name: Verify current contents, architecture and native test reports
+      - name: Build current source-only full packages
+        env:
+          PACKAGE_BUILD: ${{ github.workspace }}/source-full
+        run: python scripts/release/build_packages.py --full-only
+      - name: Verify source-only full and native NO-AI packages
         shell: python
         run: |
           from pathlib import Path,PurePosixPath
-          import hashlib,json,struct,tarfile,zipfile,shutil
+          import hashlib,json,struct,tarfile,zipfile,shutil,subprocess
           output=Path('release-ready');output.mkdir()
           sums=[]
+          tracked=subprocess.check_output(['git','ls-files','-z']).decode().split('\0')
+          expected={n for n in tracked if n and not n.startswith(('scripts/release/','.github/')) and Path(n).is_file() and Path(n).name!='debug.log'}
           for suffix in ['windows-x64','macos-arm64','linux-x64']:
               folder=Path('verified')/suffix
-              for kind in ['query','full']:
-                  reports=list(folder.rglob(suffix+'-'+kind+'-smoke.json'))
-                  assert reports and json.loads(reports[0].read_text())['ok'],(suffix,kind)
+              reports=list(folder.rglob(suffix+'-query-smoke.json'))
+              assert reports and json.loads(reports[0].read_text())['ok'],suffix
               for edition in ['no-ai-zone','sign-song-agent']:
-                  matches=list(folder.rglob(edition+'-v3.1.1-*'+suffix+('.tar.gz' if suffix.startswith('linux') else '.zip')))
+                  search=folder if edition=='no-ai-zone' else Path('source-full/artifacts')
+                  matches=list(search.rglob(edition+'-v3.1.1-*'+suffix+('.tar.gz' if suffix.startswith('linux') else '.zip')))
                   assert len(matches)==1,matches
                   p=matches[0]
                   digest=hashlib.sha256(p.read_bytes()).hexdigest()
@@ -57,23 +70,25 @@ jobs:
                   root='NO-AI-ZONE' if edition=='no-ai-zone' else '手语歌智能工坊'
                   assert all(n.startswith(root+'/') for n in paths)
                   tops={PurePosixPath(n).parts[1] for n in paths}
-                  exe='规则与例句查询.exe' if suffix.startswith('windows') else '规则与例句查询.app/Contents/MacOS/Query' if suffix.startswith('macos') else '规则与例句查询'
-                  raw=read(root+'/'+exe)
-                  if suffix.startswith('windows'):
-                      assert raw[:2]==b'MZ' and struct.unpack_from('<H',raw,struct.unpack_from('<I',raw,60)[0]+4)[0]==0x8664
-                  elif suffix.startswith('macos'):
-                      assert raw[:4]==b'\xcf\xfa\xed\xfe' and struct.unpack_from('<I',raw,4)[0]==0x100000c
-                  else:
-                      assert raw[:4]==b'\x7fELF' and struct.unpack_from('<H',raw,18)[0]==62
                   if edition=='no-ai-zone':
+                      exe='规则与例句查询.exe' if suffix.startswith('windows') else '规则与例句查询.app/Contents/MacOS/Query' if suffix.startswith('macos') else '规则与例句查询'
+                      raw=read(root+'/'+exe)
+                      if suffix.startswith('windows'):
+                          assert raw[:2]==b'MZ' and struct.unpack_from('<H',raw,struct.unpack_from('<I',raw,60)[0]+4)[0]==0x8664
+                      elif suffix.startswith('macos'):
+                          assert raw[:4]==b'\xcf\xfa\xed\xfe' and struct.unpack_from('<I',raw,4)[0]==0x100000c
+                      else:
+                          assert raw[:4]==b'\x7fELF' and struct.unpack_from('<H',raw,18)[0]==62
                       assert len(tops)==6,tops
                       assert not {'scripts','_internal','AGENTS.md','工作台','dictionaries'}&tops
                       for name in ['STOP-AI.jpg','STOP-USING-AI.jpg']:
                           assert read(root+'/'+name)==Path('scripts/release/assets',name).read_bytes()
                   else:
-                      for name in ['README.md','AGENTS.md','使用说明.md','开发参与与改进路线.md','scripts/TOOLING.md','scripts/desktop_query.py']:
-                          assert read(root+'/'+name).replace(b'\r\n',b'\n')==Path(name).read_bytes().replace(b'\r\n',b'\n'),name
-                      assert root+'/工作台/使用说明.md' in paths
+                      assert {n[len(root)+1:] for n in paths}==expected
+                      assert not {'规则与例句查询.exe','规则与例句查询.app','规则与例句查询','本系统使用说明.txt','许可说明.txt','STOP-AI.jpg','STOP-USING-AI.jpg'}&tops
+                      for name in expected:
+                          assert read(root+'/'+name)==Path(name).read_bytes(),name
+                      assert root+'/资料/规则与例句查询程序.pyw' in paths
                   assert not any('/__pycache__/' in n or '/.git/' in n or n.endswith('/debug.log') for n in paths)
                   z.close()
                   shutil.copy2(p,output/p.name)
