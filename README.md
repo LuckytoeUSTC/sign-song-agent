@@ -52,7 +52,7 @@
 
 系统后缀： **`windows-x64.zip`** 用于Windows 10/11的64位电脑； **`macos-arm64.zip`** 用于M系列Mac（macOS 14及以上）； **`linux-x64.tar.gz`** 用于Linux x64，基于Ubuntu 22.04构建，其他发行版可能需要补齐图形库。Intel Mac暂未提供对应包。
 
-完整版与NO-AI-ZONE里的独立查询程序随包提供Python运行环境；覆盖包仍由智能体配置原有Python查询入口。Windows窗口仍需要WebView2，缺少时按提示补装；Word、PDF原件由相应阅读软件打开。macOS程序尚未签名、公证，首次打开可能需要按系统提示确认来源。完整备课所需的Python和工具依赖由接管智能体另行准备。
+只有NO-AI-ZONE附免安装Python的独立查询程序；完整版保持原目录和Python查询入口，由智能体准备环境与依赖。Windows查询窗口需要WebView2；NO-AI-ZONE的macOS程序未签名、公证，首次打开可能需要确认来源。Word、PDF原件由相应阅读软件打开。
 
 **完整包用于新项目，已有项目请先核对更新说明。** 其它旧版本先检查兼容性，保留自己的工作台、资料和词典。
 
