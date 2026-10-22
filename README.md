@@ -42,17 +42,17 @@
 
 ## 下载
 
-在 [v3.1.1发布页面](https://github.com/LuckytoeUSTC/sign-song-agent/releases/tag/v3.1.1) 选择用途和系统。**Windows版已在开发者电脑验证；macOS、Linux版尚未完成实际用户环境测试，欢迎反馈。**
+在 [v3.1.1发布页面](https://github.com/LuckytoeUSTC/sign-song-agent/releases/tag/v3.1.1) 选择用途和系统。 **Windows版已在开发者电脑验证；macOS、Linux版仅完成查询程序的构建机检查，完整备课流程与实际用户环境尚未测试，欢迎反馈。**
 
 | 你想做什么 | 下载哪类包 | 下一步 |
 |---|---|---|
 | 接入智能体，完成选歌、转写讨论和讲义制作 | `sign-song-agent-v3.1.1-full-系统后缀` | 解压后打开“手语歌智能工坊”目录，按下文配置智能体 |
 | 只查规则、例句、修改辨析和原件 | `no-ai-zone-v3.1.1-系统后缀` | 解压后先读独立README，打开“规则与例句查询”；无需Python或智能体 |
-| 更新已有v3.1.0项目 | `sign-song-agent-v3.1.1-update.zip` | 先读“3.1.1更新指导.txt”，由原项目智能体备份、更新并检查；这个旧版覆盖包按Windows环境验证 |
+| 更新已有v3.1.0项目 | `sign-song-agent-v3.1.1-update-windows-x64.zip` | 先读“3.1.1更新指导.txt”，由原项目智能体备份、更新并检查；这个旧版覆盖包按Windows环境验证 |
 
-系统后缀：**`windows-x64.zip`**用于Windows 10/11的64位电脑；**`macos-arm64.zip`**用于M系列Mac（macOS 14及以上）；**`linux-x64.tar.gz`**用于Linux x64，基于Ubuntu 22.04构建，其他发行版可能需要补齐图形库。Intel Mac暂未提供对应包。
+系统后缀： **`windows-x64.zip`** 用于Windows 10/11的64位电脑； **`macos-arm64.zip`** 用于M系列Mac（macOS 14及以上）； **`linux-x64.tar.gz`** 用于Linux x64，基于Ubuntu 22.04构建，其他发行版可能需要补齐图形库。Intel Mac暂未提供对应包。
 
-查询程序随包提供Python运行环境。Windows窗口仍需要WebView2，缺少时按提示补装；Word、PDF原件由相应阅读软件打开。macOS程序尚未签名、公证，首次打开可能需要按系统提示确认来源。完整备课所需的Python和工具依赖由接管智能体另行准备。
+完整版与NO-AI-ZONE里的独立查询程序随包提供Python运行环境；覆盖包仍由智能体配置原有Python查询入口。Windows窗口仍需要WebView2，缺少时按提示补装；Word、PDF原件由相应阅读软件打开。macOS程序尚未签名、公证，首次打开可能需要按系统提示确认来源。完整备课所需的Python和工具依赖由接管智能体另行准备。
 
 **完整包用于新项目，已有项目请先核对更新说明。** 其它旧版本先检查兼容性，保留自己的工作台、资料和词典。
 
