@@ -19,7 +19,7 @@ jobs:
     timeout-minutes: 25
     env:
       PACKAGE_BUILD: ${{ github.workspace }}/package-build
-      PYINSTALLER_CONFIG_DIR: ${{ runner.temp }}/pyinstaller-cache
+      PYINSTALLER_CONFIG_DIR: ${{ github.workspace }}/pyinstaller-cache
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
