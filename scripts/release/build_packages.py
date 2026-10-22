@@ -47,7 +47,7 @@ for backend in exclude:
 cmd.append(SRC / 'scripts/release/portable_query.py')
 run(cmd)
 
-tracked = subprocess.check_output(['git', '-C', str(SRC), 'ls-files', '-z']).decode().split('\0')
+tracked = subprocess.check_output(['git', '-c', 'safe.directory=' + SRC.as_posix(), '-C', str(SRC), 'ls-files', '-z']).decode().split('\0')
 for name in tracked:
     if not name or name.startswith(('scripts/release/', '.github/')):
         continue

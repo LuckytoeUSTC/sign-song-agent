@@ -71,6 +71,11 @@ class FileApi:
         self._opener = opener
         self._allowed = {p.resolve() for p in (ROOT / '资料').rglob('*') if p.is_file() and p.suffix.lower() in {'.html', '.md', '.docx', '.doc', '.pdf'}}
 
+    def reader_ready(self, length):
+        if isinstance(length, int):
+            self._reader_length = length
+        return True
+
     def open_source(self, link):
         if not isinstance(link, str) or urlsplit(link).scheme or urlsplit(link).netloc:
             return {'ok': False, 'error': '只能打开随包资料。'}
@@ -160,7 +165,13 @@ def main():
                 assert api.open_source(link)['ok']
                 time.sleep(1)
                 child = [w for w in webview.windows if w != window][-1]
-                report['reader_chars'] = child.evaluate_js('document.body.innerText.length')
+                api._reader_length = 0
+                child.run_js("(()=>{let tries=0;function probe(){if(window.pywebview?.api){window.pywebview.api.reader_ready(document.body.innerText.length)}else if(++tries<20){setTimeout(probe,200)}}probe()})()")
+                for _ in range(50):
+                    if api._reader_length > 100:
+                        break
+                    time.sleep(0.1)
+                report['reader_chars'] = api._reader_length
                 assert report['reader_chars'] > 100
                 report['ok'] = True
                 time.sleep(5)
