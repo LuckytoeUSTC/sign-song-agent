@@ -1,0 +1,53 @@
+name: Build v3.1.1 platform packages
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: windows-2022
+            platform: windows-x64
+          - runner: macos-14
+            platform: macos-arm64
+          - runner: ubuntu-22.04
+            platform: linux-x64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 25
+    env:
+      PACKAGE_BUILD: ${{ github.workspace }}/package-build
+      PYINSTALLER_CONFIG_DIR: ${{ runner.temp }}/pyinstaller-cache
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install build dependencies
+        run: python -m pip install pyinstaller==6.22.3 pywebview==6.2.1 markdown "typing_extensions>=4.12,<5"
+      - name: Install Linux renderer and display libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb libegl1 libopengl0 libxcb-cursor0 libxcb-xinerama0 libxkbcommon-x11-0 libnss3 libasound2 libxcomposite1 libxdamage1 libxrandr2
+          python -m pip install "pywebview[pyside6]==6.2.1"
+      - name: Build and test Windows or macOS packages
+        if: runner.os != 'Linux'
+        run: python scripts/release/build_packages.py
+      - name: Build and test Linux packages
+        if: runner.os == 'Linux'
+        env:
+          QTWEBENGINE_CHROMIUM_FLAGS: --disable-gpu --disable-dev-shm-usage --no-sandbox
+        run: xvfb-run -a python scripts/release/build_packages.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: packages-${{ matrix.platform }}
+          path: |
+            package-build/artifacts/*
+            package-build/*/*-smoke.json
+            package-build/*/*-check.json
+          if-no-files-found: warn
+          retention-days: 7
