@@ -1,0 +1,89 @@
+name: Publish verified v3.1.1 platform packages
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: packages-windows-x64
+          path: verified/windows-x64
+          run-id: 39813709610
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: packages-macos-arm64
+          path: verified/macos-arm64
+          run-id: 39813709610
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: packages-linux-x64
+          path: verified/linux-x64
+          run-id: 39813709610
+          github-token: ${{ github.token }}
+      - name: Verify current contents, architecture and native test reports
+        shell: python
+        run: |
+          from pathlib import Path,PurePosixPath
+          import hashlib,json,struct,tarfile,zipfile,shutil
+          output=Path('release-ready');output.mkdir()
+          sums=[]
+          for suffix in ['windows-x64','macos-arm64','linux-x64']:
+              folder=Path('verified')/suffix
+              for kind in ['query','full']:
+                  reports=list(folder.rglob(suffix+'-'+kind+'-smoke.json'))
+                  assert reports and json.loads(reports[0].read_text())['ok'],(suffix,kind)
+              for edition in ['no-ai-zone','sign-song-agent']:
+                  matches=list(folder.rglob(edition+'-v3.1.1-*'+suffix+('.tar.gz' if suffix.startswith('linux') else '.zip')))
+                  assert len(matches)==1,matches
+                  p=matches[0]
+                  digest=hashlib.sha256(p.read_bytes()).hexdigest()
+                  assert digest==p.with_name(p.name+'.sha256').read_text().split()[0]
+                  z=tarfile.open(p) if suffix.startswith('linux') else zipfile.ZipFile(p)
+                  if suffix.startswith('linux'):
+                      paths={m.name for m in z.getmembers() if m.isfile() or m.issym()}
+                      read=lambda n:z.extractfile(n).read()
+                  else:
+                      assert z.testzip() is None
+                      paths={n for n in z.namelist() if not n.startswith('__MACOSX/') and not n.endswith('/')}
+                      read=z.read
+                  root='NO-AI-ZONE' if edition=='no-ai-zone' else '手语歌智能工坊'
+                  assert all(n.startswith(root+'/') for n in paths)
+                  tops={PurePosixPath(n).parts[1] for n in paths}
+                  exe='规则与例句查询.exe' if suffix.startswith('windows') else '规则与例句查询.app/Contents/MacOS/Query' if suffix.startswith('macos') else '规则与例句查询'
+                  raw=read(root+'/'+exe)
+                  if suffix.startswith('windows'):
+                      assert raw[:2]==b'MZ' and struct.unpack_from('<H',raw,struct.unpack_from('<I',raw,60)[0]+4)[0]==0x8664
+                  elif suffix.startswith('macos'):
+                      assert raw[:4]==b'\xcf\xfa\xed\xfe' and struct.unpack_from('<I',raw,4)[0]==0x100000c
+                  else:
+                      assert raw[:4]==b'\x7fELF' and struct.unpack_from('<H',raw,18)[0]==62
+                  if edition=='no-ai-zone':
+                      assert len(tops)==6,tops
+                      assert not {'scripts','_internal','AGENTS.md','工作台','dictionaries'}&tops
+                      for name in ['STOP-AI.jpg','STOP-USING-AI.jpg']:
+                          assert read(root+'/'+name)==Path('scripts/release/assets',name).read_bytes()
+                  else:
+                      for name in ['README.md','AGENTS.md','使用说明.md','开发参与与改进路线.md','scripts/TOOLING.md','scripts/desktop_query.py']:
+                          assert read(root+'/'+name).replace(b'\r\n',b'\n')==Path(name).read_bytes().replace(b'\r\n',b'\n'),name
+                      assert root+'/工作台/使用说明.md' in paths
+                  assert not any('/__pycache__/' in n or '/.git/' in n or n.endswith('/debug.log') for n in paths)
+                  z.close()
+                  shutil.copy2(p,output/p.name)
+                  sums.append(digest+'  '+p.name)
+          (output/'SHA256SUMS.txt').write_text('\n'.join(sorted(sums))+'\n')
+      - name: Upload verified packages to existing release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload v3.1.1 release-ready/* --repo ${{ github.repository }} --clobber
+      - uses: actions/upload-artifact@v4
+        with:
+          name: verified-release-manifest
+          path: release-ready/SHA256SUMS.txt
