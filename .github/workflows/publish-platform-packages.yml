@@ -46,7 +46,7 @@ jobs:
                   p=matches[0]
                   digest=hashlib.sha256(p.read_bytes()).hexdigest()
                   assert digest==p.with_name(p.name+'.sha256').read_text().split()[0]
-                  z=tarfile.open(p) if suffix.startswith('linux') else zipfile.ZipFile(p)
+                  z=tarfile.open(p) if suffix.startswith('linux') else zipfile.ZipFile(p,metadata_encoding='utf-8' if suffix.startswith('macos') else None)
                   if suffix.startswith('linux'):
                       paths={m.name for m in z.getmembers() if m.isfile() or m.issym()}
                       read=lambda n:z.extractfile(n).read()
