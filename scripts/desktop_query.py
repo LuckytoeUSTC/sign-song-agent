@@ -1,6 +1,8 @@
 """Desktop host for the offline query page; no model or remote service."""
 import json
 import os
+import sys
+import subprocess
 from pathlib import Path
 import re
 from urllib.parse import unquote
@@ -9,11 +11,18 @@ ROOT = Path(__file__).resolve().parents[1]
 PAGE = ROOT / 'scripts/query_page.html'
 
 
+def open_file(path):
+    if sys.platform == 'win32':
+        os.startfile(path)
+    else:
+        subprocess.Popen(['open' if sys.platform == 'darwin' else 'xdg-open', path])
+
+
 class FileApi:
     def __init__(self, html, opener=None):
         data = json.loads(re.search(r'<script id="data" type="application/json">(.*?)</script>', html, re.S).group(1))
         self._allowed = {entry['link'] for entry in data['entries'] + data['rules'] if entry.get('link')}
-        self._opener = opener or os.startfile
+        self._opener = opener or open_file
 
     def open_source(self, link):
         if not isinstance(link, str) or link not in self._allowed:
@@ -39,8 +48,9 @@ def main():
     webview.create_window('规则与例句查询', html=html, js_api=FileApi(html),
                           width=1120, height=800, min_size=(640, 480), text_select=True,
                           background_color='#F5F6F3')
-    storage = Path(os.environ.get('LOCALAPPDATA', str(ROOT))) / 'SignSongAgent' / 'WebView2'
-    webview.start(gui='edgechromium', private_mode=False, storage_path=str(storage))
+    storage = Path(os.environ.get('LOCALAPPDATA', str(Path.home() / '.cache'))) / 'SignSongAgent' / 'WebView2'
+    engine = 'edgechromium' if sys.platform == 'win32' else 'cocoa' if sys.platform == 'darwin' else 'qt'
+    webview.start(gui=engine, private_mode=False, storage_path=str(storage))
 
 
 if __name__ == '__main__':

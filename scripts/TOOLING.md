@@ -116,3 +116,10 @@ python scripts/audit_docx.py '<旧稿.docx>'
 精细沿用已有Word，显式使用make_handout.py 原件.docx --input-format docx --out 新副本.docx --layout 调整.json。副本模式保留全部原图、尺寸、裁剪、间隔、页面宽度、样式和页眉页脚，只修改word/document.xml中明确指定的段落。paragraph_overrides以从1开始的正文段落序号为键，使用上述五个格式字段；段落序号与原件绑定，原件结构变化后先重新核对。不能给此模式传全局图高、边距或字体，也不推测段落角色；没有覆盖项即原样复制。
 
 reference_frame_rows指定确实需要修正的参考图段落序号；reference_frame_padding_pt控制额外行高（磅，最小可用留边须逐页验证）。只处理指定行中已有虚线图框，保留图片宽高及横向间隔。新稿reference_frame_padding:true也只增加含参考图框行的行高，普通图行保持原有间距。未指定额外留边时沿用6磅，可明确减小。不要把某一份参照的段落序号或字体要求写入通用默认值。
+
+
+## 三系统查询发行包
+
+完整版与NO-AI-ZONE的构建入口为scripts/release/build_packages.py，在对应系统中构建并执行合成检查和窗口测试；构建记录、临时目录和附件保存在源码目录之外。GitHub Actions的platform-packages流程负责Windows x64、macOS arm64和Linux x64的原生构建，只生成待核查附件，不自动发布。
+
+独立查询程序随包提供Python。Windows使用WebView2，macOS使用系统WebKit，Linux随包提供Qt/PySide6。源码直接运行时，Windows/macOS安装desktop-requirements；Linux另需pywebview[pyside6]及可用的桌面图形库。各系统打开原件分别使用系统默认应用；程序检查与构建机窗口测试不能替代真实用户环境验证。
