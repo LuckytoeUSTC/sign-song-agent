@@ -97,8 +97,21 @@ jobs:
       - name: Upload verified packages to existing release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload v3.1.1 release-ready/* --repo ${{ github.repository }} --clobber
+        shell: python
+        run: |
+          from pathlib import Path
+          import hashlib,json,os,subprocess
+          repo=os.environ['GITHUB_REPOSITORY']
+          release=json.loads(subprocess.check_output(['gh','api','repos/'+repo+'/releases/tags/v3.1.1']))
+          existing={a['name']:a for a in release['assets']}
+          for path in sorted(Path('release-ready').iterdir()):
+              digest='sha256:'+hashlib.sha256(path.read_bytes()).hexdigest()
+              if existing.get(path.name,{}).get('digest')==digest:
+                  print('Unchanged, preserve asset:',path.name)
+                  continue
+              subprocess.run(['gh','release','upload','v3.1.1',str(path),'--repo',repo,'--clobber'],check=True)
       - uses: actions/upload-artifact@v4
         with:
           name: verified-release-manifest
           path: release-ready/SHA256SUMS.txt
+
